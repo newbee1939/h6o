@@ -41,7 +41,7 @@
 ## P2 — 速度を CI の合否条件にする
 **Goal**: 予算を超える変更は**マージできない**
 
-### P2-1. 転送量バジェットのチェックスクリプト
+### P2-1. 転送量バジェット（= [CONCEPT.md の速度目標](CONCEPT.md)）のチェックスクリプト
 - [ ] **やること**: `scripts/check-budget.mjs` を書く（依存なし。Node 標準の `zlib.brotliCompressSync` で `dist/**/*.html` を圧縮しサイズを測る）。判定は 3 つ — JS/CSS ファイルが 0 件、各 HTML の brotli 後が 15KB 以下、`<script>` タグが 0 件。超えたら `process.exit(1)`
 - **成果物**: `scripts/check-budget.mjs`、`package.json` に `"check:budget"`
 - **DoD**: `npm run build && npm run check:budget` が exit 0。**わざと 20KB のダミー記事を置くと exit 1 になる**ことを確認してから消す
