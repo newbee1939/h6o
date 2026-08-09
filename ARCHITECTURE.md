@@ -5,7 +5,7 @@
 作るもの・速度目標は [CONCEPT.md](CONCEPT.md) を唯一の真実とする。ここには**どう作るか**だけを書く。
 
 ## 設計原則
-1. **配信するのは HTML 1 本だけ。** CSS はインライン、JS・フォント・画像は配信しない。リクエストが増える変更は原則却下する。
+1. **配信するのは HTML 1 本だけ。** CSS はインライン、JS・フォント・画像は配信しない。リクエストが増える変更は原則却下する。禁じるのは**実行されるコード**であり、ブラウザに読ませるだけの宣言（speculation rules）は対象外。
 2. **速度は CI が守る。** 人間の注意力を当てにしない。[CONCEPT.md の速度目標](CONCEPT.md)（転送量 15KB / JS 0 バイト / Lighthouse 100）を**予算**とみなし、超えたらビルドを失敗させる。
 3. **ビルド時にできることを実行時にやらない。** 言語切替も対訳判定も生成時に確定させる。
 4. **不可逆なのは URL と記事ファイルの形だけ。** それ以外（SSG・ホスティング・CSS）は迷ったら即決して先に進む。
@@ -32,12 +32,14 @@ src/
     [lang]/index.astro    言語ごとの記事一覧
     [lang]/[slug].astro   記事ページ
     [lang]/rss.xml.ts     フィード
-  layouts/Base.astro      唯一のレイアウト。<style> はここに直書き
+  layouts/Base.astro      唯一のレイアウト。<style> と speculation rules はここに直書き
+public/
+  _headers                キャッシュ制御。dist/ にそのままコピーされる
 astro.config.mjs
 wrangler.jsonc            assets.directory = ./dist
 .github/workflows/deploy.yml
 ```
-**作らないもの**: コンポーネントディレクトリ（Base.astro と記事テンプレだけで足りる）、CSS ファイル（レイアウトに直書き）、`public/`（配信する静的ファイルが無い。favicon も置かない）、テーマ設定・サイト設定 JSON（定数はレイアウトに直書き）。
+**作らないもの**: コンポーネントディレクトリ（Base.astro と記事テンプレだけで足りる）、CSS ファイル（レイアウトに直書き）、favicon・画像（配信しない）、テーマ設定・サイト設定 JSON（定数はレイアウトに直書き）。`public/` に置くのは `_headers` だけ。
 
 ## 技術選定
 すべて 2026-08-09 決定。
@@ -49,6 +51,8 @@ wrangler.jsonc            assets.directory = ./dist
 | CSS | **レイアウトに直書き + `inlineStylesheets: 'always'`** | 外部 CSS / Tailwind | 外部 CSS は 1 リクエスト増える。この規模でクラス設計は要らない | 可逆 |
 | ダークモード | **`prefers-color-scheme` のみ** | 切替ボタン | 切替の保存には JS と localStorage が要る。原則 1 に反する | 可逆 |
 | CI | **GitHub Actions** | Cloudflare の Git 連携ビルド | デプロイ前に速度チェックを挟みたい。Cloudflare 側ビルドだと合否判定を差し込めない | 可逆 |
+| キャッシュ | **`_headers` で `max-age=300, stale-while-revalidate=86400`** | 既定の `must-revalidate` / 長い `max-age` | 既定のままだと再訪のたびに往復が発生する。一方 HTML はファイル名にハッシュを付けられないので長い `max-age` は記事の更新が届かなくなる。**古いものを即返し、裏で更新**が唯一の妥協点 | 可逆 |
+| 遷移の先読み | **Speculation Rules（prerender）** | 何もしない / JS のルーター | 宣言的な JSON で、実行されるコードは無い。一覧 → 記事の遷移が体感 0ms になる。Firefox は非対応だが、未対応ブラウザは単に無視するだけで害が無い | 可逆 |
 
 ## データ
 DB は持たない。**扱うデータは記事ファイルだけで、個人情報は一切持たない**（フォームもログインも解析も無い）。
@@ -78,6 +82,8 @@ description: 一覧と <meta> に使う 1 行
 - **コンテンツ設定は `src/content.config.ts`。** 旧来の `src/content/config.ts` は現行バージョンでは無効。AI に書かせると古い場所に書きがち。［[Content Collections](https://docs.astro.build/en/guides/content-collections/)］
 - **静的出力では i18n のリダイレクトがミドルウェア頼みで効かない。** `/` → `/ja/` は Astro に任せず、**ルートに実体（言語選択の HTML）を置くか、Cloudflare 側の設定でリダイレクトする**。なお 301 は往復が 1 回増えるので、ルートの TTFB を測って判断する。［[Internationalization](https://docs.astro.build/en/guides/internationalization/)］
 - **`run_worker_first` を使うと静的アセットへのリクエストまで課金対象になり、無料枠を超えると 429 が返る**（静的配信へのフォールバックが起きない）。Worker スクリプトは置かない。［[Billing and limitations](https://developers.cloudflare.com/workers/static-assets/billing-and-limitations/)］
+- **Workers static assets の既定は `Cache-Control: public, max-age=0, must-revalidate`。** キャッシュはされるが**使う前に必ず問い合わせる**ので、再訪でも往復が消えない。`_headers` で明示的に上書きする。［[Headers](https://developers.cloudflare.com/workers/static-assets/headers/)］
+- **Speculation Rules は Baseline ではない。** Chrome は対応、Safari は限定的、**Firefox は非対応**。未対応ブラウザでは単に無視されるので入れて損はないが、「全ブラウザで速い」とは言えない。［[MDN](https://developer.mozilla.org/en-US/docs/Web/API/Speculation_Rules_API)］
 - **GitHub Actions の実行環境は UTC。** 記事の日付を「今日」で自動補完しない（JST とズレる）。frontmatter に手で書く。
 - **Lighthouse の SEO 100 には `<meta name="description">` と `lang` 属性が要る。** テンプレートに最初から入れておかないと、記事を書くたびに減点される。
 

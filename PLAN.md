@@ -24,9 +24,9 @@
 - **DoD**: `npm run build` 後、`dist/ja/hello/index.html` が存在し、`find dist \( -name '*.js' -o -name '*.css' \) | wc -l` が **0**（括弧が無いと `-print` が最後の条件にしか掛からず .js を見落とす）。`grep -c '<style>' dist/ja/hello/index.html` が 1 以上
 
 ### P1-3. Cloudflare へ手動でデプロイして道を通す
-- [ ] **やること**: `npm i -D wrangler`、`wrangler.jsonc` に `assets: { directory: "./dist" }` のみ（**Worker スクリプトは置かない** — `run_worker_first` は課金対象になる）。`npx wrangler login` の後 `npx wrangler deploy`
-- **成果物**: `wrangler.jsonc`
-- **DoD**: `curl -sI https://<name>.<subdomain>.workers.dev/ja/hello/ | head -1` が `HTTP/2 200`。ブラウザで記事が読める
+- [ ] **やること**: `npm i -D wrangler`、`wrangler.jsonc` に `assets: { directory: "./dist" }` のみ（**Worker スクリプトは置かない** — `run_worker_first` は課金対象になる）。あわせて `public/_headers` を作り、既定の `must-revalidate` を上書きする（`/*` に `Cache-Control: public, max-age=300, stale-while-revalidate=86400`）。`npx wrangler login` の後 `npx wrangler deploy`
+- **成果物**: `wrangler.jsonc`、`public/_headers`
+- **DoD**: `curl -sI https://<name>.<subdomain>.workers.dev/ja/hello/` が `HTTP/2 200` かつ **`cache-control` が `stale-while-revalidate` を含む**（既定のままなら `_headers` が dist に届いていない）
 
 ### P1-4. GitHub Actions で自動デプロイにする
 - [ ] **やること**: Cloudflare で Workers デプロイ権限だけの API トークンを作り `CLOUDFLARE_API_TOKEN` として登録。`.github/workflows/deploy.yml`（`on: push: branches: [main]`、`permissions: contents: read`、`timeout-minutes: 10`、concurrency、Action は**コミットハッシュ固定**、`node-version-file: .tool-versions`、`npm ci --ignore-scripts` → build → `wrangler deploy`）
@@ -42,7 +42,7 @@
 **Goal**: 予算を超える変更は**マージできない**
 
 ### P2-1. 転送量バジェット（= [CONCEPT.md の速度目標](CONCEPT.md)）のチェックスクリプト
-- [ ] **やること**: `scripts/check-budget.mjs` を書く（依存なし。Node 標準の `zlib.brotliCompressSync` で `dist/**/*.html` を圧縮しサイズを測る）。判定は 3 つ — JS/CSS ファイルが 0 件、各 HTML の brotli 後が 15KB 以下、`<script>` タグが 0 件。超えたら `process.exit(1)`
+- [ ] **やること**: `scripts/check-budget.mjs` を書く（依存なし。Node 標準の `zlib.brotliCompressSync` で `dist/**/*.html` を圧縮しサイズを測る）。判定は 3 つ — JS/CSS ファイルが 0 件、各 HTML の brotli 後が 15KB 以下、**`type="speculationrules"` 以外の `<script>` タグが 0 件**（宣言的な先読みだけは許可する。[CONCEPT.md の速度目標](CONCEPT.md)を参照）。超えたら `process.exit(1)`
 - **成果物**: `scripts/check-budget.mjs`、`package.json` に `"check:budget"`
 - **DoD**: `npm run build && npm run check:budget` が exit 0。**わざと 20KB のダミー記事を置くと exit 1 になる**ことを確認してから消す
 
@@ -79,11 +79,16 @@
 - **成果物**: `src/pages/index.astro` または redirect 設定、ARCHITECTURE.md の更新
 - **DoD**: `curl -sI https://<URL>/` が 200 か 301 を返し、計測値を PLAN.md に `実績:` で記録
 
-### P3-4. RSS/Atom フィード
+### P3-4. 遷移を先読みする（Speculation Rules）
+- [ ] **やること**: `Base.astro` に `<script type="speculationrules">` を直書きし、同一オリジンのリンクを `prerender`（`eagerness` は `moderate` から試す）。一覧ページができた P3-1 の後でないと効果が測れない
+- **成果物**: `src/layouts/Base.astro` の更新
+- **DoD**: Chrome DevTools の Application → Speculative loads で一覧ページのリンクが `Ready` になる。`npm run check:budget` が引き続き exit 0
+
+### P3-5. RSS/Atom フィード
 - [ ] **やること**: `src/pages/[lang]/rss.xml.ts` を言語ごとに生成。`@astrojs/rss` を使うか自前で XML を組むかは、依存が増える価値があるか見て判断する
 - **成果物**: `src/pages/[lang]/rss.xml.ts`
 - **DoD**: `curl -s <URL>/ja/rss.xml | head -5` が妥当な XML。フィードリーダーに登録して記事が出ることを目視
 
-### P3-5. 振り返りと公開
+### P3-6. 振り返りと公開
 - [ ] **やること**: README に何のサイトかを 3 行で書く。**その日のうちに公開する**（完成度を上げてから出さない）。1 か月後に自分が使っているかを見る、と CONCEPT.md の成功条件に沿って確認日を決める
 - **DoD**: 記事の URL を自分以外の場所（SNS など）に 1 回出す

@@ -31,7 +31,7 @@ Markdown を git push すると静的 HTML が生成され、エッジから配�
 
 ## 速度目標（v1）
 記事ページ 1 枚について、CI で自動判定する。**この 3 つが「予算」**で、超えたらデプロイしない:
-- **JS 0 バイト**（外部リクエスト 0 本）
+- **実行される JS 0 バイト**（外部リクエスト 0 本）。唯一の例外は宣言的な `<script type="speculationrules">`（JSON。ブラウザが読むだけでコードは走らない）
 - **転送量 ≤ 15KB**（brotli 圧縮後。brotli = 配信時に自動でかかる圧縮で、実際に回線を流れるのはこのサイズ。HTML 1 本のみ、フォント / 画像なし）
 - **Lighthouse 100 / 100 / 100 / 100**（Performance / Accessibility / Best Practices / SEO）
 
