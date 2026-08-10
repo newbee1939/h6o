@@ -14,9 +14,10 @@
 **Goal**: `*.workers.dev` で記事ページが読め、push すると自動で反映される
 
 ### P1-1. リポジトリの足場
-- [ ] **やること**: `.gitignore`（`.env`、`node_modules`、`dist`）、`.tool-versions`（`node 24.19.0`。ローカルの 25.6.0 は mise が切り替える。v24 は 2026-08-03 に Active LTS を終えて Maintenance に入ったが、v26 の LTS 化まではこれが最も無難）、`.npmrc`（`strict-allow-scripts=true` / `min-release-age=7`）、`.github/dependabot.yml`（npm + github-actions、weekly、グループ 1 本）、`AGENTS.md`（ビルド / デプロイのコマンドと記事ファイルの命名規約だけ）、`CLAUDE.md`（`@AGENTS.md` の 1 行）。あわせて `gh api -X PATCH repos/newbee1939/h6o` で secret scanning / push protection / dependabot / delete_branch_on_merge を有効化
+- [x] **やること**: `.gitignore`（`.env`、`node_modules`、`dist`）、`.tool-versions`（`node 24.19.0`。ローカルの 25.6.0 は mise が切り替える。v24 は 2026-08-03 に Active LTS を終えて Maintenance に入ったが、v26 の LTS 化まではこれが最も無難）、`.npmrc`（`strict-allow-scripts=true` / `min-release-age=7`）、`.github/dependabot.yml`（npm + github-actions、weekly、グループ 1 本）、`AGENTS.md`（ビルド / デプロイのコマンドと記事ファイルの命名規約だけ）、`CLAUDE.md`（`@AGENTS.md` の 1 行）。あわせて `gh api -X PATCH repos/newbee1939/h6o` で secret scanning / push protection / dependabot / delete_branch_on_merge を有効化
 - **成果物**: 上記ファイル一式
 - **DoD**: `mise install && node -v` が `v24.19.0`。`gh api repos/newbee1939/h6o --jq '.delete_branch_on_merge, .security_and_analysis'` で有効を確認
+- **実績:** secret scanning / push protection は public リポジトリでは最初から有効だった。**Dependabot だけ `PATCH repos/...` では変えられず**、`PUT repos/.../vulnerability-alerts` と `PUT repos/.../automated-security-fixes` の 2 本を叩く必要がある。npm 11.17.0 は `strict-allow-scripts` / `min-release-age` をどちらも認識した（`npm config get` で値が返る）
 
 ### P1-2. Astro を最小構成で入れ、記事 1 本を HTML にする
 - [ ] **やること**: `npm create astro@latest` は使わず（テンプレートが余分なものを持ち込む）、`npm i astro` から手で組む。`src/content.config.ts` で `glob({ pattern: '**/*.md', base: './posts' })` のコレクションを定義。`src/layouts/Base.astro` に `<style>` 直書き（`lang` 属性、`<meta name="description">`、`prefers-color-scheme` のダークモードを必ず入れる。切替ボタンは作らない）。`src/pages/[lang]/[slug].astro` で `getStaticPaths()` を書く。`astro.config.mjs` に **`build: { inlineStylesheets: 'always' }`**。`posts/hello.ja.md` を 1 本置く
