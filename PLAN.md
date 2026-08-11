@@ -29,6 +29,11 @@
 - [ ] **やること**: `npm i -D wrangler`、`wrangler.jsonc` に `assets: { directory: "./dist" }` のみ（**Worker スクリプトは置かない** — `run_worker_first` は課金対象になる）。あわせて `public/_headers` を作り、既定の `must-revalidate` を上書きする（`/*` に `Cache-Control: public, max-age=300, stale-while-revalidate=86400`）。`npx wrangler login` の後 `npx wrangler deploy`
 - **成果物**: `wrangler.jsonc`、`public/_headers`
 - **DoD**: `curl -sI https://<name>.<subdomain>.workers.dev/ja/hello/` が `HTTP/2 200` かつ **`cache-control` が `stale-while-revalidate` を含む**（既定のままなら `_headers` が dist に届いていない）
+- **実績（ファイル作成まで。`wrangler login` 以降は未実施）:**
+  - **`npm i -D wrangler` は `strict-allow-scripts=true` に弾かれて完走しない**（`ESTRICTALLOWSCRIPTS`。esbuild と workerd が install script を持つ）。しかも `npm install-scripts deny` は**インストール済みのものしか対象にできない**ので、`--ignore-scripts` で一度入れてから deny する順序が要る。結果は `.npmrc` ではなく **`package.json` の `allowScripts`** に載る
+  - **その 2 つは両方 deny してよかった。** Worker スクリプトを持たない（`main` 無しの）静的アセット配信では esbuild のバイナリも workerd も要らず、`npm ci` → `npm run build` → `wrangler deploy --dry-run` が通る。P1-4 の `npm ci --ignore-scripts` とも噛み合う
+  - **`min-release-age=7` は npm 11 未満だと黙って無視される**（警告すら出ない）。npm 10 で入れると当日公開の 4.120.1 と 2 日前の `@speed-highlight/core` を掴んだ。npm 11 で入れ直すと自動で 4.118.0 に落ち、追加された 84 個すべてが 7 日以上経過したものになった。**ロックファイルを更新するときは npm のメジャーバージョンを確認する**
+  - 4.118.0 は miniflare 経由で undici の high 勧告を抱える（修正は 4.120.x）。`min-release-age` と「既知の脆弱性ゼロ」は今この瞬間だけ両立しない。undici が来るのは `wrangler dev` のローカル模擬環境の経路だけで deploy には乗らないので、4.120.x が 7 日経つのを Dependabot に任せる
 
 ### P1-4. GitHub Actions で自動デプロイにする
 - [ ] **やること**: Cloudflare で Workers デプロイ権限だけの API トークンを作り `CLOUDFLARE_API_TOKEN` として登録。`.github/workflows/deploy.yml`（`on: push: branches: [main]`、`permissions: contents: read`、`timeout-minutes: 10`、concurrency、Action は**コミットハッシュ固定**、`node-version-file: .tool-versions`、`npm ci --ignore-scripts` → build → `wrangler deploy`）

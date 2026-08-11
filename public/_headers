@@ -1,0 +1,6 @@
+# Workers static assets の既定は `public, max-age=0, must-revalidate`。
+# キャッシュはされるが使う前に必ず問い合わせるので、再訪でも往復が消えない。
+# HTML はファイル名にハッシュを付けられないため長い max-age も使えない。
+# 古いものを即返し、裏で更新する（stale-while-revalidate）のが妥協点。
+/*
+  Cache-Control: public, max-age=300, stale-while-revalidate=86400

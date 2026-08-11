@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "h6o",
+  "compatibility_date": "2026-08-11",
+  // main（Worker スクリプト）は意図的に置かない。置くと静的アセットへの
+  // リクエストまで課金対象になり、無料枠を超えると静的配信にフォールバックせず
+  // 429 が返る。配信するのは assets だけでよい。
+  // https://developers.cloudflare.com/workers/static-assets/billing-and-limitations/
+  "assets": {
+    "directory": "./dist"
+  }
+}
