@@ -31,16 +31,23 @@
 - **DoD**: `curl -sI https://<name>.<subdomain>.workers.dev/ja/hello/` が `HTTP/2 200` かつ **`cache-control` が `stale-while-revalidate` を含む**（既定のままなら `_headers` が dist に届いていない）
 - **実績（ファイル作成まで。`wrangler login` 以降は未実施）:**
   - **`npm i -D wrangler` は `strict-allow-scripts=true` に弾かれて完走しない**（`ESTRICTALLOWSCRIPTS`。esbuild と workerd が install script を持つ）。しかも `npm install-scripts deny` は**インストール済みのものしか対象にできない**ので、`--ignore-scripts` で一度入れてから deny する順序が要る。結果は `.npmrc` ではなく **`package.json` の `allowScripts`** に載る
-  - **その 2 つは両方 deny してよかった。** Worker スクリプトを持たない（`main` 無しの）静的アセット配信では esbuild のバイナリも workerd も要らず、`npm ci` → `npm run build` → `wrangler deploy --dry-run` が通る。P1-4 の `npm ci --ignore-scripts` とも噛み合う
+  - **その 2 つは両方 deny してよかった。** Worker スクリプトを持たない（`main` 無しの）静的アセット配信では esbuild のバイナリも workerd も要らず、`npm ci` → `npm run build` → `wrangler deploy --dry-run` が通る。P1-5 の `npm ci --ignore-scripts` とも噛み合う
   - **`min-release-age=7` は npm 11 未満だと黙って無視される**（警告すら出ない）。npm 10 で入れると当日公開の 4.120.1 と 2 日前の `@speed-highlight/core` を掴んだ。npm 11 で入れ直すと自動で 4.118.0 に落ち、追加された 84 個すべてが 7 日以上経過したものになった。**ロックファイルを更新するときは npm のメジャーバージョンを確認する**
   - 4.118.0 は miniflare 経由で undici の high 勧告を抱える（修正は 4.120.x）。`min-release-age` と「既知の脆弱性ゼロ」は今この瞬間だけ両立しない。undici が来るのは `wrangler dev` のローカル模擬環境の経路だけで deploy には乗らないので、4.120.x が 7 日経つのを Dependabot に任せる
 
-### P1-4. GitHub Actions で自動デプロイにする
-- [ ] **やること**: Cloudflare で Workers デプロイ権限だけの API トークンを作り `CLOUDFLARE_API_TOKEN` として登録。`.github/workflows/deploy.yml`（`on: push: branches: [main]`、`permissions: contents: read`、`timeout-minutes: 10`、concurrency、Action は**コミットハッシュ固定**、`node-version-file: .tool-versions`、`npm ci --ignore-scripts` → build → `wrangler deploy`）
+### P1-4. Cloudflare 側の設定を homelab で Terraform 管理にする
+- [ ] **やること**: P1-3 で手作業した Cloudflare の設定を、**別リポジトリ `homelab` の Terraform コードに落として import する**（この PR は homelab 側に立てる）。**境界を先に決める — Terraform が持つのはアカウント側の器（API トークン、workers.dev サブドメイン、あとから独自ドメインを足すなら DNS / ルート）だけで、Worker のコードは `wrangler deploy` が持ち続ける**。`cloudflare_workers_script` を Terraform に持たせると、デプロイのたびに state と実物がズレて毎回 diff が出る（＝ CI が Terraform を壊す）
+  - 注意: `cloudflare_api_token` の値は **state に平文で載る**。homelab の state が暗号化されたリモートバックエンドにあることを先に確認する。無ければトークンだけは手動発行のままにして、Terraform に載せない判断でよい
+  - GitHub 側の secret 登録（`gh secret set CLOUDFLARE_API_TOKEN`）は手動のままにする。ここまで Terraform に載せると provider が 2 つになる
+- **成果物**: homelab の `cloudflare/` 配下の `.tf` 一式、h6o の ARCHITECTURE.md「運用」に**どこまでを Terraform が持つか**の 1 行
+- **DoD**: `terraform plan` が **No changes**（＝手作業の実物とコードが一致している）。その状態で h6o を `wrangler deploy` し直しても、もう一度の `terraform plan` がやはり No changes
+
+### P1-5. GitHub Actions で自動デプロイにする
+- [ ] **やること**: Workers デプロイ権限だけの API トークン（P1-4 で Terraform 管理にしたもの）を `CLOUDFLARE_API_TOKEN` として登録。`.github/workflows/deploy.yml`（`on: push: branches: [main]`、`permissions: contents: read`、`timeout-minutes: 10`、concurrency、Action は**コミットハッシュ固定**、`node-version-file: .tool-versions`、`npm ci --ignore-scripts` → build → `wrangler deploy`）
 - **成果物**: `.github/workflows/deploy.yml`
 - **DoD**: 記事の文言を 1 文字変えて main にマージ → Actions が緑 → `curl -s <URL> | grep '<変更後の文字列>'` がヒット
 
-### P1-5. 振り返り
+### P1-6. 振り返り
 - [ ] **やること**: 詰まった箇所と、想定と違った点を PLAN.md に `実績:` で追記。`/new-product` skill に足すべき知見があれば提案する
 
 ---
