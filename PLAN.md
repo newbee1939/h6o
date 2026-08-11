@@ -32,6 +32,7 @@
 - **実績（ファイル作成まで。`wrangler login` 以降は未実施）:**
   - **`npm i -D wrangler` は `strict-allow-scripts=true` に弾かれて完走しない**（`ESTRICTALLOWSCRIPTS`。esbuild と workerd が install script を持つ）。しかも `npm install-scripts deny` は**インストール済みのものしか対象にできない**ので、`--ignore-scripts` で一度入れてから deny する順序が要る。結果は `.npmrc` ではなく **`package.json` の `allowScripts`** に載る
   - **その 2 つは両方 deny してよかった。** Worker スクリプトを持たない（`main` 無しの）静的アセット配信では esbuild のバイナリも workerd も要らず、`npm ci` → `npm run build` → `wrangler deploy --dry-run` が通る。P1-5 の `npm ci --ignore-scripts` とも噛み合う
+  - **`fsevents` も deny が要った。** macOS だけの依存（`os: ["darwin"]`）なので Linux の CI では素通りするが、**手元では `npm ci` が `ESTRICTALLOWSCRIPTS` で落ちる**。install script は `node-gyp rebuild`（ネイティブ拡張のビルド）だが、**tarball に `fsevents.node` が同梱済み**なので deny しても動く。「CI が通る = 手元でも通る」が成り立たない依存があると学んだ
   - **`min-release-age=7` は npm 11 未満だと黙って無視される**（警告すら出ない）。npm 10 で入れると当日公開の 4.120.1 と 2 日前の `@speed-highlight/core` を掴んだ。npm 11 で入れ直すと自動で 4.118.0 に落ち、追加された 84 個すべてが 7 日以上経過したものになった。**ロックファイルを更新するときは npm のメジャーバージョンを確認する**
   - 4.118.0 は miniflare 経由で undici の high 勧告を抱える（修正は 4.120.x）。`min-release-age` と「既知の脆弱性ゼロ」は今この瞬間だけ両立しない。undici が来るのは `wrangler dev` のローカル模擬環境の経路だけで deploy には乗らないので、4.120.x が 7 日経つのを Dependabot に任せる
 

@@ -15,6 +15,7 @@
   },
   "allowScripts": {
     "esbuild": false,
+    "fsevents": false,
     "workerd": false
   }
 }
