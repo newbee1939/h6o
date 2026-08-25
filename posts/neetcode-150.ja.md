@@ -41,24 +41,31 @@ class Solution {
 
 https://neetcode.io/problems/is-anagram/question?list=neetcode150
 
+2つの文字列が、同じ文字を同じ個数ずつ持っているかを判定する。並び順は問わない。
+
+**ここで効くのは「有無」ではなく「個数」**。`Set` で「その文字があるか」を見る解き方は通らない。`s = "aab"` と `t = "abb"` はどちらも使っている文字が `{a, b}` で同じなので、有無だけ見ると一致してしまう。
+
+制約が「小文字の英字のみ」なので、26個ぶんの数え上げ配列1本で足りる。
 
 ```ts
 class Solution {
-    /**
-     * @param {string} s
-     * @param {string} t
-     * @return {boolean}
-     */
     isAnagram(s: string, t: string): boolean {
-        const charSet = new Set(s.split(''));
+        // 長さが違えば個数が一致しようがない
+        if (s.length !== t.length) return false;
 
-        for (const char of t) {
-            if (charSet.has(char)) {
-                charSet.delete(char);
-            }
+        const A = 'a'.charCodeAt(0);
+        // アルファベットの文字数
+        const freq = new Array(26).fill(0);
+
+        for (let i = 0; i < s.length; i++) {
+            freq[s.charCodeAt(i) - A]++; // s に出た分を足す
+            freq[t.charCodeAt(i) - A]--; // t に出た分を引く
         }
 
-        return !(charSet.size > 0);
+        // 打ち消し合って全部 0 なら、内訳が完全に一致している
+        return freq.every((n) => n === 0);
     }
 }
 ```
+
+- `charCodeAt(i) - A` は「`a` を 0 番とする通し番号」を作っている。文字はコンピュータの中では数値（`a` は 97、`b` は 98...）なので、97 を引けば 0〜25 の添字になる。**これは自作のハッシュ関数**で、衝突が起きず計算も引き算1回なので `Map` より速い
