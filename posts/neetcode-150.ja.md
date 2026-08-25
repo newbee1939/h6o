@@ -43,5 +43,22 @@ https://neetcode.io/problems/is-anagram/question?list=neetcode150
 
 
 ```ts
-//
+class Solution {
+    /**
+     * @param {string} s
+     * @param {string} t
+     * @return {boolean}
+     */
+    isAnagram(s: string, t: string): boolean {
+        const charSet = new Set(s.split(''));
+
+        for (const char of t) {
+            if (charSet.has(char)) {
+                charSet.delete(char);
+            }
+        }
+
+        return !(charSet.size > 0);
+    }
+}
 ```
