@@ -34,3 +34,14 @@ class Solution {
     }
 }
 ```
+
+### 2. Valid Anagram
+
+アナグラム = 言葉の文字を並び替えて、まったく別の意味の言葉や文章を作る言葉遊び
+
+https://neetcode.io/problems/is-anagram/question?list=neetcode150
+
+
+```ts
+//
+```
