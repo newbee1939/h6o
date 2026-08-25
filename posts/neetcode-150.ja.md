@@ -2,33 +2,34 @@
 title: NeetCode150問をTypeScriptで解いてみた
 date: 2026-08-25
 lang: ja
-description:
+description: ""
 ---
 
 「データ構造」と「アルゴリズム」の学習のため、NeetCode150をTypeScriptで解いてみた。
 
 それぞれの回答と、回答のポイントを自分なりにまとめる。
 
-## 1 Contains Duplicate
+## Arrays & Hashing
+
+配列を1回なめながら、見たものをハッシュ（キーを渡すと数値を返す関数）に記録していく——このグループはほぼこれに尽きる。
+
+素直にやると二重ループで O(n²) になる問題を、「探す」という操作をハッシュに肩代わりさせて O(n) に落とす。ハッシュテーブルは値からその置き場所を計算で求めるので、中に何個入っていても1回の探索で済む（平均 O(1)）。その代わり、記録する分のメモリ O(n) を払う。**時間をメモリで買う**のがこのグループの型。
+
+### 1. Contains Duplicate
 
 https://neetcode.io/problems/duplicate-integer/question?list=neetcode150
 
+配列の中に同じ値が2回以上出てくるか判定する。
+
 ```ts
 class Solution {
-    /**
-     * @param {number[]} nums
-     * @return {boolean}
-     */
     hasDuplicate(nums: number[]): boolean {
-        const numMap = new Map();
+        const seen = new Set<number>();
+        // ループを1度回すだけ
         for (const num of nums) {
-            if (numMap.has(num)) {
-                return true;
-            }
-
-            numMap.set(num, 1);
+            if (seen.has(num)) return true;
+            seen.add(num);
         }
-
         return false;
     }
 }
