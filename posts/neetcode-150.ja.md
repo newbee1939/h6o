@@ -74,28 +74,40 @@ class Solution {
 
 https://neetcode.io/problems/two-integer-sum/question?list=neetcode150
 
+足して `target` になる2つの要素の**添字**を返す。
+
+素直に書くと「すべてのペアを試す」二重ループで O(n²) になってしまう。ここを崩す鍵は**式の変形**にある。
+
+```
+nums[i] + nums[j] === target     未知のものが2つ -> 総当たりになる
+nums[j] === target - nums[i]     i を固定すれば、右辺は確定した1つの値になる
+```
+
+`i` を決めた瞬間、相方の値は計算で求まる。つまり**「2つを探す問題」が「1つの値を知っているか問い合わせる問題」に変化する**。あとは見てきたものをハッシュに記録しておけばいい。
+
 ```ts
 class Solution {
-    /**
-     * @param {number[]} nums
-     * @param {number} target
-     * @return {number[]}
-     */
     twoSum(nums: number[], target: number): number[] {
-        const numsMap = new Map();
+        // 値 -> その値があった添字（index）
+        const seen = new Map<number, number>();
 
         for (let i = 0; i < nums.length; i++) {
-            const currentNum = nums[i];
-            const diff = target - currentNum;
+            const diff = target - nums[i]; // 欲しい相方
 
-            if (numsMap.has(diff)) {
-                return [numsMap.get(diff), i];
-            }
+            // 記録より先に問い合わせる
+            if (seen.has(diff)) return [seen.get(diff)!, i];
 
-            numsMap.set(currentNum, i);
+            seen.set(nums[i], i);
         }
 
         return [];
     }
 }
 ```
+
+ポイント:
+
+- 返すのは値ではなく添字なので、入れ物は `Set` ではなく `Map<値, 添字>`
+- `seen.get(diff)!` の `!` は「`has` で確認済みなので `undefined` ではない」と TypeScript に伝える印
+
+**応用**: 「条件を満たす2つの組を探す」と来たら、まず**式を変形して片方を固定できないか**を考える。相方が計算で出せるなら、探索はハッシュへの問い合わせ1回に潰せる。
