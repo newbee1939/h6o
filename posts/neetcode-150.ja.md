@@ -72,6 +72,8 @@ class Solution {
 
 ### 3. Two Sum
 
+https://neetcode.io/problems/two-integer-sum/question?list=neetcode150
+
 ```ts
 class Solution {
     /**
