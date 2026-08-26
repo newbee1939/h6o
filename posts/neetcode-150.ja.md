@@ -110,3 +110,7 @@ class Solution {
 - `seen.get(diff)!` の `!` は「`has` で確認済みなので `undefined` ではない」と TypeScript に伝える印
 
 **応用**: 「条件を満たす2つの組を探す」と来たら、まず**式を変形して片方を固定できないか**を考える。相方が計算で出せるなら、探索はハッシュへの問い合わせ1回に潰せる。
+
+### 4. Group Anagrams
+
+https://neetcode.io/problems/anagram-groups/question?list=neetcode150
