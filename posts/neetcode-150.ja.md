@@ -92,9 +92,8 @@ class Solution {
         const seen = new Map<number, number>();
 
         for (let i = 0; i < nums.length; i++) {
-            const diff = target - nums[i]; // 欲しい相方
+            const diff = target - nums[i];
 
-            // 記録より先に問い合わせる
             if (seen.has(diff)) return [seen.get(diff)!, i];
 
             seen.set(nums[i], i);
