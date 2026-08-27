@@ -5,13 +5,13 @@
 1 タスク = 1 PR。上から順に実行する。完了は `- [x]`、やめたものは `- [~]` ＋理由。
 想定と違ったら **`実績:`** を追記する。
 
-**前提**: Cloudflare アカウントを持っていること（P1-3 で必要）。GitHub リポジトリは `newbee1939/h6o`。
+**前提**: GitHub リポジトリは `newbee1939/h6o`。ホスティングは GitHub Pages（追加のアカウントは不要）。
 **v1 の完成 = P2-3 まで**（CONCEPT.md の完成の定義が「速度目標を CI が通す」まで含むため）。P3 は v1 の後。
 
 ---
 
 ## P1 — 足場を入れて、記事 1 本を世界に出す
-**Goal**: `*.workers.dev` で記事ページが読め、push すると自動で反映される
+**Goal**: `newbee1939.github.io/h6o/` で記事ページが読め、push すると自動で反映される
 
 ### P1-1. リポジトリの足場
 - [x] **やること**: `.gitignore`（`.env`、`node_modules`、`dist`）、`.tool-versions`（`node 24.19.0`。ローカルの 25.6.0 は mise が切り替える。v24 は 2026-08-03 に Active LTS を終えて Maintenance に入ったが、v26 の LTS 化まではこれが最も無難）、`.npmrc`（`strict-allow-scripts=true` / `min-release-age=7`）、`.github/dependabot.yml`（npm + github-actions、weekly、グループ 1 本）、`AGENTS.md`（ビルド / デプロイのコマンドと記事ファイルの命名規約だけ）、`CLAUDE.md`（`@AGENTS.md` の 1 行）。あわせて `gh api -X PATCH repos/newbee1939/h6o` で secret scanning / push protection / dependabot / delete_branch_on_merge を有効化
@@ -25,17 +25,14 @@
 - **DoD**: `npm run build` 後、`dist/ja/hello/index.html` が存在し、`find dist \( -name '*.js' -o -name '*.css' \) | wc -l` が **0**（括弧が無いと `-print` が最後の条件にしか掛からず .js を見落とす）。`grep -c '<style>' dist/ja/hello/index.html` が 1 以上
 - **実績:** 入ったのは Astro 7.2.0。**glob loader の既定の id 生成がファイル名を GitHub slug 化するので `hello.ja.md` の id が `helloja` になり、`<slug>.<lang>` に分解できない**。`generateId: ({ entry }) => entry.replace(/\.md$/, '')` を渡して回避した（このファイル名規約を採る以上必ず踏む）。`import { z } from 'astro:content'` は非推奨になっていて `astro/zod` から取る。markdown 本文はレイアウトの外から差し込まれるためスコープ付き CSS が当たらず、`<style is:global>` が要る。記事 1 枚の実測は **brotli 後 0.99KB / JS・CSS ファイル 0 件 / `<script>` 0 件**（予算 15KB に対して十分な余裕）
 
-### P1-3. Cloudflare へ手動でデプロイして道を通す
-- [ ] **やること**: `npm i -D wrangler`、`wrangler.jsonc` に `assets: { directory: "./dist" }` のみ（**Worker スクリプトは置かない** — `run_worker_first` は課金対象になる）。あわせて `public/_headers` を作り、既定の `must-revalidate` を上書きする（`/*` に `Cache-Control: public, max-age=300, stale-while-revalidate=86400`）。`npx wrangler login` の後 `npx wrangler deploy`
-- **成果物**: `wrangler.jsonc`、`public/_headers`
-- **DoD**: `curl -sI https://<name>.<subdomain>.workers.dev/ja/hello/` が `HTTP/2 200` かつ **`cache-control` が `stale-while-revalidate` を含む**（既定のままなら `_headers` が dist に届いていない）
+### P1-3. GitHub Pages へ自動デプロイする
+- [ ] **やること**: `astro.config.mjs` に `site` / `base`（プロジェクトサイトは `/<repo>/` 配下で配信されるため）。`.github/workflows/deploy.yml`（`on: push: branches: [main]`、`permissions` は `contents: read` / `pages: write` / `id-token: write`、`timeout-minutes: 10`、concurrency は `cancel-in-progress: false`、Action は**コミットハッシュ固定**、`node-version-file: .tool-versions`、`npm ci --ignore-scripts` → build → `upload-pages-artifact` → `deploy-pages`）。リポジトリの Pages 設定を **build_type: workflow** にする
+- **成果物**: `.github/workflows/deploy.yml`、`astro.config.mjs` の更新
+- **DoD**: 記事の文言を 1 文字変えて main にマージ → Actions が緑 → `curl -s https://newbee1939.github.io/h6o/ja/<slug>/ | grep '<変更後の文字列>'` がヒット
+- **実績:** ホスティングを Cloudflare Workers から GitHub Pages に変更（2026-08-27）。理由と捨てたものは ARCHITECTURE.md の技術選定表に記録。Pages はレスポンスヘッダを設定できないので `public/_headers` は作らず、`wrangler` も入れない。デプロイ用の secret は不要（OIDC）
+- **残り**: ルート `/h6o/` は実体が無いので 404。一覧ページ（P3-1）か言語選択（P3-3）を入れるまでは記事 URL 直リンクのみ
 
-### P1-4. GitHub Actions で自動デプロイにする
-- [ ] **やること**: Cloudflare で Workers デプロイ権限だけの API トークンを作り `CLOUDFLARE_API_TOKEN` として登録。`.github/workflows/deploy.yml`（`on: push: branches: [main]`、`permissions: contents: read`、`timeout-minutes: 10`、concurrency、Action は**コミットハッシュ固定**、`node-version-file: .tool-versions`、`npm ci --ignore-scripts` → build → `wrangler deploy`）
-- **成果物**: `.github/workflows/deploy.yml`
-- **DoD**: 記事の文言を 1 文字変えて main にマージ → Actions が緑 → `curl -s <URL> | grep '<変更後の文字列>'` がヒット
-
-### P1-5. 振り返り
+### P1-4. 振り返り
 - [ ] **やること**: 詰まった箇所と、想定と違った点を PLAN.md に `実績:` で追記。`/new-product` skill に足すべき知見があれば提案する
 
 ---
@@ -77,9 +74,9 @@
 - **DoD**: `posts/hello.en.md` を追加すると両ページに相互リンクが出て、対訳の無い記事には出ないことを `grep` で確認
 
 ### P3-3. ルート `/` の扱いを実測して決める
-- [ ] **やること**: 静的出力では Astro の `redirectToDefaultLocale` が効かない。**(a) 言語選択の実体 HTML を置く / (b) Cloudflare 側で `/ja/` へ 301** の 2 案を両方試し、`curl -w '%{time_starttransfer}'` で比較して決める。決定は ARCHITECTURE.md に追記
+- [ ] **やること**: 静的出力では Astro の `redirectToDefaultLocale` が効かず、GitHub Pages にリダイレクト設定も無い。**ルートに言語選択の実体 HTML を置く**（P3-1 の一覧を兼ねてもよい）。決定は ARCHITECTURE.md に追記
 - **成果物**: `src/pages/index.astro` または redirect 設定、ARCHITECTURE.md の更新
-- **DoD**: `curl -sI https://<URL>/` が 200 か 301 を返し、計測値を PLAN.md に `実績:` で記録
+- **DoD**: `curl -sI https://newbee1939.github.io/h6o/` が 200 を返す
 
 ### P3-4. 遷移を先読みする（Speculation Rules）
 - [ ] **やること**: `Base.astro` に `<script type="speculationrules">` を直書きし、同一オリジンのリンクを `prerender`（`eagerness` は `moderate` から試す）。一覧ページができた P3-1 の後でないと効果が測れない
