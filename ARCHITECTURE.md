@@ -28,15 +28,16 @@ posts/                    記事の原本。ここだけが人間の書く場所
 src/
   content.config.ts       コレクション定義（★ src/content/config.ts ではない）
   pages/
-    index.astro           / → /ja/ の扱い（落とし穴を参照）
-    [lang]/index.astro    言語ごとの記事一覧
+    index.astro           ルート = 日本語の一覧を兼ねる（落とし穴を参照）
+    en/index.astro        英語の一覧
     [lang]/[slug].astro   記事ページ
     [lang]/rss.xml.ts     フィード
+  components/PostList.astro  一覧の <ul>。日英の一覧ページが共有する唯一の部品
   layouts/Base.astro      唯一のレイアウト。<style> と speculation rules はここに直書き
 astro.config.mjs          site + base（GitHub Pages のプロジェクトサイト）
 .github/workflows/deploy.yml
 ```
-**作らないもの**: コンポーネントディレクトリ（Base.astro と記事テンプレだけで足りる）、CSS ファイル（レイアウトに直書き）、favicon・画像（配信しない）、テーマ設定・サイト設定 JSON（定数はレイアウトに直書き）、`public/`（配信する静的ファイルが無い）。
+**作らないもの**: 上記以外のコンポーネント（一覧を日英で共有する `PostList.astro` だけが例外。それ以外はレイアウトとページに直書き）、CSS ファイル（レイアウトに直書き）、favicon・画像（配信しない）、テーマ設定・サイト設定 JSON（定数はレイアウトに直書き）、`public/`（配信する静的ファイルが無い）。
 
 ## 技術選定
 すべて 2026-08-09 決定。
@@ -77,7 +78,7 @@ description: 一覧と <meta> に使う 1 行
 
 - **`build.inlineStylesheets` の既定は `'auto'`**（4KB 未満だけインライン）。**`'always'` を明示しないと CSS が外部ファイルになり、リクエストが 2 本になる**。［[Astro 設定リファレンス](https://docs.astro.build/en/reference/configuration-reference/#buildinlinestylesheets)］
 - **コンテンツ設定は `src/content.config.ts`。** 旧来の `src/content/config.ts` は現行バージョンでは無効。AI に書かせると古い場所に書きがち。［[Content Collections](https://docs.astro.build/en/guides/content-collections/)］
-- **静的出力では i18n のリダイレクトがミドルウェア頼みで効かない。** `/` → `/ja/` は Astro に任せず、**ルートに実体（言語選択の HTML）を置く**（GitHub Pages ではリダイレクト設定も持てない）。［[Internationalization](https://docs.astro.build/en/guides/internationalization/)］
+- **静的出力では i18n のリダイレクトがミドルウェア頼みで効かない。** `/` → `/ja/` は Astro に任せず、**ルートに実体を置く**（GitHub Pages ではリダイレクト設定も持てない）。言語選択だけのページは 1 クリック増えるだけなので、**ルートを日本語の一覧そのものにし、英語へのリンクを 1 本置く**（`/ja/` の一覧は作らない）。［[Internationalization](https://docs.astro.build/en/guides/internationalization/)］
 - **GitHub Pages のプロジェクトサイトは `/<repo>/` 配下で配信される。** `base` を設定しないとリンクとアセットのパスが全部ずれる。［[Astro: GitHub Pages](https://docs.astro.build/en/guides/deploy/github/)］
 - **GitHub Pages はレスポンスヘッダを設定できない**（`_headers` は効かない）。キャッシュ制御は Pages 既定の `max-age=600` に従うほかない。［[GitHub Pages について](https://docs.github.com/en/pages/getting-started-with-github-pages/about-github-pages)］
 - **Speculation Rules は Baseline ではない。** Chrome は対応、Safari は限定的、**Firefox は非対応**。未対応ブラウザでは単に無視されるので入れて損はないが、「全ブラウザで速い」とは言えない。［[MDN](https://developer.mozilla.org/en-US/docs/Web/API/Speculation_Rules_API)］
