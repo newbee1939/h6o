@@ -64,9 +64,10 @@
 **Goal**: 対訳のある記事を日英で置き、相互に行き来でき、RSS で購読できる
 
 ### P3-1. 言語ごとの記事一覧
-- [ ] **やること**: `src/pages/[lang]/index.astro`。日付降順でタイトルと description を並べるだけ（ページネーション・タグは作らない）
-- **成果物**: `src/pages/[lang]/index.astro`
-- **DoD**: `dist/ja/index.html` と `dist/en/index.html` が生成され、`check:budget` が通る
+- [x] **やること**: 日付降順でタイトルを並べるだけ（ページネーション・タグは作らない）。ルートを日本語の一覧そのものにしたので `/ja/` の一覧は作らない
+- **成果物**: `src/components/PostList.astro`、`src/pages/index.astro`、`src/pages/en/index.astro`
+- **DoD**: `dist/index.html` と `dist/en/index.html` が生成され、相互リンクが 1 本ずつ出ている
+- **実績**: 一覧の `<ul>` を 2 ページで共有するため `PostList.astro` を切り出した（ARCHITECTURE.md の「作らないもの」を更新）
 
 ### P3-2. 対訳リンクと hreflang
 - [ ] **やること**: 同じ slug の別 lang が存在するときだけ切替リンクを出す（フロントマターに相互参照は書かない）。`<link rel="alternate" hreflang>` も同じ判定で出力
@@ -74,7 +75,7 @@
 - **DoD**: `posts/hello.en.md` を追加すると両ページに相互リンクが出て、対訳の無い記事には出ないことを `grep` で確認
 
 ### P3-3. ルート `/` の扱いを実測して決める
-- [ ] **やること**: 静的出力では Astro の `redirectToDefaultLocale` が効かず、GitHub Pages にリダイレクト設定も無い。**ルートに言語選択の実体 HTML を置く**（P3-1 の一覧を兼ねてもよい）。決定は ARCHITECTURE.md に追記
+- [x] **やること**: 静的出力では Astro の `redirectToDefaultLocale` が効かず、GitHub Pages にリダイレクト設定も無い。**ルートを日本語の一覧そのものにし、英語へのリンクを 1 本置く**（言語選択だけのページは 1 クリック増えるだけなので作らない）。決定は ARCHITECTURE.md に追記済み
 - **成果物**: `src/pages/index.astro` または redirect 設定、ARCHITECTURE.md の更新
 - **DoD**: `curl -sI https://newbee1939.github.io/h6o/` が 200 を返す
 
