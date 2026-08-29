@@ -115,30 +115,27 @@ class Solution {
 
 https://neetcode.io/problems/anagram-groups/question?list=neetcode150
 
+アナグラム同士をグループにまとめる。
+
+2 と同じで、**並び順を捨てて正規化する**。ソートすれば `"act"` も `"cat"` も `"act"` になるので、これをキーにすれば同じ場所に勝手に集まる。
+
 ```ts
 class Solution {
-    /**
-     * @param {string[]} strs
-     * @return {string[][]}
-     */
     groupAnagrams(strs: string[]): string[][] {
-        const strMap = new Map();
+        // ソート済みの文字列 -> そこに属する元の文字列たち
+        const groups = new Map<string, string[]>();
 
-        // 一つずつ処理していく
-        for (let i = 0; i < strs.length; i++) {
-            // 文字の順番を並び替える
-            const curStr = strs[i];
-            const sortedCurStr = curStr.split('').sort().join('');
-            if (strMap.has(sortedCurStr)) {
-                // 追加する
-                const value = Array.from(strMap.get(sortedCurStr)).push(curStr);
-                strMap.set(sortedCurStr, value);
-            } else {
-                strMap.set(sortedCurStr, [curStr]);
-            }
+        for (const str of strs) {
+            const key = str.split('').sort().join('');
+            const group = groups.get(key) ?? [];
+
+            group.push(str);
+            groups.set(key, group);
         }
 
-        return Array.from(strMap);
+        return [...groups.values()];
     }
 }
 ```
+
+**応用**: 「同じ仲間をまとめる」は、**何を揃えれば同じとみなせるか（＝キー）を決める**だけの問題になる。キーが決まれば `Map<キー, 配列>` に放り込んで終わり。
