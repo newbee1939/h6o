@@ -9,7 +9,7 @@
 | ビルド | `npm run build`（出力は `dist/`） |
 | ローカル確認 | `npm run dev` |
 | 速度チェック | `npm run check:budget` / `npm run check:lh` |
-| デプロイ | **main への push で GitHub Actions が自動実行**。手動デプロイの手順は用意しない |
+| デプロイ | **main への push で GitHub Actions が自動実行**（GitHub Pages）。手動デプロイの手順は用意しない |
 
 Node のバージョンは `.tool-versions`（mise が切り替える）。依存の追加は `npm i` の前に「原則 5: まず何を消せるか」を通すこと。
 
@@ -32,6 +32,6 @@ description: 一覧と <meta> に使う 1 行
 ## 触るときの制約
 
 - **JS を配信しない**（`<script type="speculationrules">` だけ例外）。CSS は `src/layouts/Base.astro` に直書きし、外部ファイルにしない
-- `public/` に置くのは `_headers` だけ。favicon・画像・フォントは置かない
+- `public/` は作らない。favicon・画像・フォントは配信しない
 - コレクション定義は `src/content.config.ts`（`src/content/config.ts` **ではない**）
-- `wrangler.jsonc` に Worker スクリプトを足さない（静的アセットが課金対象になる）
+- 公開 URL は `https://newbee1939.github.io/h6o/`。`astro.config.mjs` の `base` を消すとリンクが全部壊れる
