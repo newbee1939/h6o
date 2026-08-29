@@ -114,3 +114,31 @@ class Solution {
 ### 4. Group Anagrams
 
 https://neetcode.io/problems/anagram-groups/question?list=neetcode150
+
+```ts
+class Solution {
+    /**
+     * @param {string[]} strs
+     * @return {string[][]}
+     */
+    groupAnagrams(strs: string[]): string[][] {
+        const strMap = new Map();
+
+        // 一つずつ処理していく
+        for (let i = 0; i < strs.length; i++) {
+            // 文字の順番を並び替える
+            const curStr = strs[i];
+            const sortedCurStr = curStr.split('').sort().join('');
+            if (strMap.has(sortedCurStr)) {
+                // 追加する
+                const value = Array.from(strMap.get(sortedCurStr)).push(curStr);
+                strMap.set(sortedCurStr, value);
+            } else {
+                strMap.set(sortedCurStr, [curStr]);
+            }
+        }
+
+        return Array.from(strMap);
+    }
+}
+```
