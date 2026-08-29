@@ -140,7 +140,7 @@ class Solution {
 
 **応用**: 「同じ仲間をまとめる」は、**何を揃えれば同じとみなせるか（＝キー）を決める**だけの問題になる。キーが決まれば `Map<キー, 配列>` に放り込んで終わり。
 
-### 5. Group Anagrams
+### 5. Top K Frequent Elements
 
 ```ts
 class Solution {
