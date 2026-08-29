@@ -17,7 +17,7 @@ posts/*.md を書く
   → git push (main)
   → GitHub Actions: astro build
   → 速度チェック（転送量 / JS バイト数 / Lighthouse）  ← ここで落ちたらデプロイしない
-  → wrangler deploy → Cloudflare のエッジへ
+  → GitHub Pages へデプロイ
 ```
 
 ## ファイル構成
@@ -28,18 +28,16 @@ posts/                    記事の原本。ここだけが人間の書く場所
 src/
   content.config.ts       コレクション定義（★ src/content/config.ts ではない）
   pages/
-    index.astro           / → /ja/ の扱い（落とし穴を参照）
-    [lang]/index.astro    言語ごとの記事一覧
+    index.astro           ルート = 日本語の一覧を兼ねる（落とし穴を参照）
+    en/index.astro        英語の一覧
     [lang]/[slug].astro   記事ページ
     [lang]/rss.xml.ts     フィード
+  components/PostList.astro  一覧の <ul>。日英の一覧ページが共有する唯一の部品
   layouts/Base.astro      唯一のレイアウト。<style> と speculation rules はここに直書き
-public/
-  _headers                キャッシュ制御。dist/ にそのままコピーされる
-astro.config.mjs
-wrangler.jsonc            assets.directory = ./dist
+astro.config.mjs          site + base（GitHub Pages のプロジェクトサイト）
 .github/workflows/deploy.yml
 ```
-**作らないもの**: コンポーネントディレクトリ（Base.astro と記事テンプレだけで足りる）、CSS ファイル（レイアウトに直書き）、favicon・画像（配信しない）、テーマ設定・サイト設定 JSON（定数はレイアウトに直書き）。`public/` に置くのは `_headers` だけ。
+**作らないもの**: 上記以外のコンポーネント（一覧を日英で共有する `PostList.astro` だけが例外。それ以外はレイアウトとページに直書き）、CSS ファイル（レイアウトに直書き）、favicon・画像（配信しない）、テーマ設定・サイト設定 JSON（定数はレイアウトに直書き）、`public/`（配信する静的ファイルが無い）。
 
 ## 技術選定
 すべて 2026-08-09 決定。
@@ -47,11 +45,11 @@ wrangler.jsonc            assets.directory = ./dist
 | 項目 | 採用 | 捨てた案 | 理由 | 可逆性 |
 |---|---|---|---|---|
 | SSG | **Astro** | 自作ビルドスクリプト / Hugo | 既定で JS 0 バイト出力。`build.inlineStylesheets` と i18n ルーティングが公式機能で、自作すると一番面倒な一覧・RSS・対訳リンクが標準で付く | 可逆。出力が静的 HTML なので乗り換え可能 |
-| ホスティング | **Cloudflare Workers（static assets）** | Cloudflare Pages / GitHub Pages | 公式が新規プロジェクトに推奨するのは Pages ではなく Workers。静的アセットへのリクエストは**無料・無制限**、Worker スクリプト無しで配信できる | 可逆。dist/ を別の場所に置くだけ |
+| ホスティング | **GitHub Pages**（2026-08-27 変更） | Cloudflare Workers（static assets） | Workers は静的配信が無料・無制限で速いが、アカウントと API トークンの用意が要る。**まず公開して読める状態にするのが先**なので、リポジトリだけで完結する Pages を採る。`_headers` が効かない（キャッシュ制御ができない）のは承知のうえ | 可逆。dist/ を別の場所に置くだけ |
 | CSS | **レイアウトに直書き + `inlineStylesheets: 'always'`** | 外部 CSS / Tailwind | 外部 CSS は 1 リクエスト増える。この規模でクラス設計は要らない | 可逆 |
 | ダークモード | **`prefers-color-scheme` のみ** | 切替ボタン | 切替の保存には JS と localStorage が要る。原則 1 に反する | 可逆 |
-| CI | **GitHub Actions** | Cloudflare の Git 連携ビルド | デプロイ前に速度チェックを挟みたい。Cloudflare 側ビルドだと合否判定を差し込めない | 可逆 |
-| キャッシュ | **`_headers` で `max-age=300, stale-while-revalidate=86400`** | 既定の `must-revalidate` / 長い `max-age` | 既定のままだと再訪のたびに往復が発生する。一方 HTML はファイル名にハッシュを付けられないので長い `max-age` は記事の更新が届かなくなる。**古いものを即返し、裏で更新**が唯一の妥協点 | 可逆 |
+| CI | **GitHub Actions** | ホスティング側の Git 連携ビルド | デプロイ前に速度チェックを挟みたい。ホスティング側のビルドだと合否判定を差し込めない | 可逆 |
+| キャッシュ | **ホスティングの既定に従う**（2026-08-27 変更） | `_headers` で `stale-while-revalidate` | GitHub Pages はレスポンスヘッダを設定できない。ヘッダを制御したくなったらホスティングごと移す | 可逆 |
 | 遷移の先読み | **Speculation Rules（prerender）** | 何もしない / JS のルーター | 宣言的な JSON で、実行されるコードは無い。一覧 → 記事の遷移が体感 0ms になる。Firefox は非対応だが、未対応ブラウザは単に無視するだけで害が無い | 可逆 |
 
 ## データ
@@ -72,17 +70,17 @@ description: 一覧と <meta> に使う 1 行
 ## 運用
 - **デプロイ**: main への push で全自動。手動デプロイの手順は用意しない。
 - **壊れたと気づく手段**: デプロイは速度チェックを通らないと実行されないので、「気づかないうちに遅くなる」経路が無い。サイトが落ちたことは自分が読めなくなるので気づく（無料の外形監視は v1 では入れない）。
-- **秘密情報**: `CLOUDFLARE_API_TOKEN` を GitHub Actions の secrets に置く。リポジトリには入れない。トークンの権限は Workers のデプロイのみに絞る。
-- **ドメイン**: v1 は `*.workers.dev` のサブドメイン。独自ドメインは後から追加する（可逆）。
+- **秘密情報**: 持たない。Pages へのデプロイは GitHub Actions の OIDC トークン（`id-token: write`）で行う。
+- **ドメイン**: v1 は `https://newbee1939.github.io/h6o/`。独自ドメインは後から追加する（可逆）。そのとき `astro.config.mjs` の `site` / `base` を直す。
 
 ## 落とし穴
 着手前に確認済み。すべて公式ドキュメントで裏を取ったもの。
 
 - **`build.inlineStylesheets` の既定は `'auto'`**（4KB 未満だけインライン）。**`'always'` を明示しないと CSS が外部ファイルになり、リクエストが 2 本になる**。［[Astro 設定リファレンス](https://docs.astro.build/en/reference/configuration-reference/#buildinlinestylesheets)］
 - **コンテンツ設定は `src/content.config.ts`。** 旧来の `src/content/config.ts` は現行バージョンでは無効。AI に書かせると古い場所に書きがち。［[Content Collections](https://docs.astro.build/en/guides/content-collections/)］
-- **静的出力では i18n のリダイレクトがミドルウェア頼みで効かない。** `/` → `/ja/` は Astro に任せず、**ルートに実体（言語選択の HTML）を置くか、Cloudflare 側の設定でリダイレクトする**。なお 301 は往復が 1 回増えるので、ルートの TTFB を測って判断する。［[Internationalization](https://docs.astro.build/en/guides/internationalization/)］
-- **`run_worker_first` を使うと静的アセットへのリクエストまで課金対象になり、無料枠を超えると 429 が返る**（静的配信へのフォールバックが起きない）。Worker スクリプトは置かない。［[Billing and limitations](https://developers.cloudflare.com/workers/static-assets/billing-and-limitations/)］
-- **Workers static assets の既定は `Cache-Control: public, max-age=0, must-revalidate`。** キャッシュはされるが**使う前に必ず問い合わせる**ので、再訪でも往復が消えない。`_headers` で明示的に上書きする。［[Headers](https://developers.cloudflare.com/workers/static-assets/headers/)］
+- **静的出力では i18n のリダイレクトがミドルウェア頼みで効かない。** `/` → `/ja/` は Astro に任せず、**ルートに実体を置く**（GitHub Pages ではリダイレクト設定も持てない）。言語選択だけのページは 1 クリック増えるだけなので、**ルートを日本語の一覧そのものにし、英語へのリンクを 1 本置く**（`/ja/` の一覧は作らない）。［[Internationalization](https://docs.astro.build/en/guides/internationalization/)］
+- **GitHub Pages のプロジェクトサイトは `/<repo>/` 配下で配信される。** `base` を設定しないとリンクとアセットのパスが全部ずれる。［[Astro: GitHub Pages](https://docs.astro.build/en/guides/deploy/github/)］
+- **GitHub Pages はレスポンスヘッダを設定できない**（`_headers` は効かない）。キャッシュ制御は Pages 既定の `max-age=600` に従うほかない。［[GitHub Pages について](https://docs.github.com/en/pages/getting-started-with-github-pages/about-github-pages)］
 - **Speculation Rules は Baseline ではない。** Chrome は対応、Safari は限定的、**Firefox は非対応**。未対応ブラウザでは単に無視されるので入れて損はないが、「全ブラウザで速い」とは言えない。［[MDN](https://developer.mozilla.org/en-US/docs/Web/API/Speculation_Rules_API)］
 - **GitHub Actions の実行環境は UTC。** 記事の日付を「今日」で自動補完しない（JST とズレる）。frontmatter に手で書く。
 - **Lighthouse の SEO 100 には `<meta name="description">` と `lang` 属性が要る。** テンプレートに最初から入れておかないと、記事を書くたびに減点される。
@@ -90,6 +88,6 @@ description: 一覧と <meta> に使う 1 行
 ## ロードマップ
 | Phase | 内容 | DoD |
 |---|---|---|
-| P1 | 足場 + 記事 1 本が公開される | `*.workers.dev` で記事ページが読める |
+| P1 | 足場 + 記事 1 本が公開される | `newbee1939.github.io/h6o/` で記事ページが読める |
 | P2 | 速度を CI の合否条件にする | 予算超過の PR で CI が fail することを実際に確認 |
 | P3 | 一覧・対訳リンク・RSS | 日英の記事を 1 組置いて相互に行き来できる |
