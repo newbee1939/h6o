@@ -142,28 +142,84 @@ class Solution {
 
 ### 5. Top K Frequent Elements
 
+https://neetcode.io/problems/top-k-elements-in-list/question?list=neetcode150
+
+出現回数の多い順に上位 `k` 個の値を返す。
+
+やることは 2 段階。**① 各値が何回出たか数える → ② 回数の多い順に k 個取り出す**。①は 3・4 と同じハッシュで確定なので、考えどころは②だけになる。
+
+#### 素直な解: ソートする
+
+「多い順に取り出す」を、そのまま「多い順に並べ替えてから頭を取る」に翻訳した形。
+
 ```ts
 class Solution {
-    /**
-     * @param {number[]} nums
-     * @param {number} k
-     * @return {number[]}
-     */
+    // 例: nums = [1, 1, 1, 2, 2, 3], k = 2  ->  答えは [1, 2]
     topKFrequent(nums: number[], k: number): number[] {
-        const numMap = new Map<number, number>();
+        // ① 数える。Map は「キー -> 値」の対応表
+        const count = new Map<number, number>();
         for (const num of nums) {
-            const value = numMap.get(num) ?? 0;
-
-            // それぞれの数字が何個あるかを記録していく
-            numMap.set(num, value + 1);
+            // まだ一度も出ていなければ get は undefined を返すので、?? 0 で 0 とみなす
+            count.set(num, (count.get(num) ?? 0) + 1);
         }
+        // count = { 1 => 3, 2 => 2, 3 => 1 }  （1 が3回、2 が2回、3 が1回）
 
-        // 持っている個数が大きい順にソート
-        return Array.from(numMap).sort((a, b) => {
-            return b[1] - a[1];
-        }).slice(0, k).map((tmp) => {
-            return tmp[0];
-        });
+        // ② 並べ替えて頭から k 個
+        return [...count] // Map を配列に開く -> [[1, 3], [2, 2], [3, 1]]
+            .sort((a, b) => b[1] - a[1]) // [1] は「回数」。b - a なので降順（多い順）
+            //                              ここだけ O(n log n)。1行に見えるが
+            //                              中で「2つを比べる」を n log n 回まわしている
+            .slice(0, k) // 先頭 k 組だけ -> [[1, 3], [2, 2]]
+            .map(([num]) => num); // 各組から値だけ取り出す -> [1, 2]
     }
 }
 ```
+
+- `[...count]` の `...`（スプレッド構文）で、`Map` は `[キー, 値]` のペアの配列になる
+- `.sort((a, b) => ...)` の比較関数は「負なら a が前、正なら b が前」。`b[1] - a[1]` は回数が大きいほうを前に出すので降順
+- `([num]) => num` は分割代入。`pair => pair[0]` と同じだが、**添字ではなく名前で読める**ぶん間違えにくい
+
+#### もう一段速い解: バケットソート
+
+ここで効くのは、**出現回数は必ず 1〜n の整数**という点（n は `nums` の長さ）。小さい整数なら**そのまま配列の添字として使える**。
+
+回数ごとに置き場所（バケット＝バケツ）を用意して放り込めば、**入れ終わった時点でもう回数順に並んでいる**。比較もソートも要らない。
+
+```ts
+class Solution {
+    // 例: nums = [1, 1, 1, 2, 2, 3], k = 2  ->  答えは [1, 2]
+    topKFrequent(nums: number[], k: number): number[] {
+        // ① 数える（ここはソート版と同じ）… n 回
+        const count = new Map<number, number>();
+        for (const num of nums) {
+            count.set(num, (count.get(num) ?? 0) + 1);
+        }
+        // count = { 1 => 3, 2 => 2, 3 => 1 }
+
+        // ②-a 「回数 f の値を入れるバケツ」を byFreq[f] として用意する … n 回
+        //      回数は最大でも n（全部同じ値のとき）なので、添字 n が使えるよう n+1 本作る
+        const byFreq: number[][] = Array.from({ length: nums.length + 1 }, () => []);
+        for (const [num, freq] of count) {
+            byFreq[freq].push(num); // 「3回出た値は 1」なら byFreq[3] に 1 を入れる
+        }
+        // count のキーと値が入れ替わった形になる:
+        // byFreq = [ [], [3], [2], [1], [], [], [] ]
+        //    添字     0    1    2    3   4   5   6
+        //                  ↑    ↑    ↑
+        //             1回出た 2回出た 3回出た値
+
+        // ②-b 添字の大きい側（＝回数が多い側）から、k 個そろうまで拾う … 多くても n 回
+        //      「比べる」作業がどこにもないのがポイント。置いた場所がそのまま順位になっている
+        const top: number[] = [];
+        for (let freq = nums.length; freq > 0 && top.length < k; freq--) {
+            top.push(...byFreq[freq]); // バケツの中身をまとめて足す（空なら何も起きない）
+        }
+        // freq = 6,5,4 は空 -> freq = 3 で 1 を追加 -> freq = 2 で 2 を追加 -> 2個そろって終了
+
+        // 同じ回数の値が複数あると k を超えて入ることがあるので、最後に切りそろえる
+        return top.slice(0, k); // [1, 2]
+    }
+}
+```
+
+**ループが増えているのに速い理由**: 計算量を決めるのは**ループの本数ではなく、1本が何回まわるか**。バケット版は 3 本ともきっかり n 回で、`n + n + n = 3n` → 定数倍を無視して `O(n)`。対してソート版は `.sort()` の 1 行の中で「2つを比べる」を n log n 回まわしている。**見えているループより、`sort` のような一見1行の処理のほうが重い**。
