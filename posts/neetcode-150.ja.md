@@ -226,56 +226,64 @@ class Solution {
 
 ```ts
 class Solution {
-    /**
-     * @param {string[]} strs
-     * @returns {string}
-     */
+    // 例: strs = ["ab", "c:d"]  ->  "2:ab3:c:d"
     encode(strs: string[]): string {
-        // 返却文字列を定義
-        let res = "";
-
-        for (const str of strs) {
-            res = res + str.length.toString() + ":" + str;
-        }
-
-        // 特殊な加工方法で文字列連結した情報を返す
-        return res;
+        // 「長さ:本体」を並べる。長さがあるので、本体に : が入っていても壊れない
+        return strs.map((s) => `${s.length}:${s}`).join('');
+        //   "2:ab"        +      "3:c:d"
     }
 
-    /**
-     * @param {string} str
-     * @returns {string[]}
-     */
+    // 例: "2:ab3:c:d"  ->  ["ab", "c:d"]
     decode(str: string): string[] {
-        // strは #3Hog#2io#5hih;q のような形式になっている想定
-
+        //  "2:ab3:c:d"
+        //   012345678   <- 添字。本体の : は添字 7 にいる
         const res: string[] = [];
         let i = 0;
 
-        // strを1文字ずつ走査していく
-        // iは文字列の数に応じて増やしていく想定なのでforにはしない
+        // i は文字列の長さぶん飛ばしていくので for にはしない
         while (i < str.length) {
-            // 目標（:）を見つける
-            // iの値を変えたくないので一旦別の変数へ
-            let j = i;
-            while (str[j] !== ":") {
-                j++;
-            }
-            // :を発見したらこのステップへ
-            // 文字列の数を取り出す
-            const length = parseInt(str.substring(i, j), 10);
+            const colon = str.indexOf(':', i); // i 以降で最初の : の位置
+            const length = Number(str.slice(i, colon));
+            const start = colon + 1; // : の次が本体の先頭
 
-            // 格納する文字列を取り出す
-            // jの位置は現在:なので1つ増やす
-            j++;
-            const tmpString = str.substring(j, j + length);
-
-            res.push(tmpString);
-
-            i = j + length;
+            res.push(str.slice(start, start + length));
+            i = start + length; // 次の「長さ」の先頭へ
         }
+        // 1周目: i=0  colon=1  length=2  start=2  ->  slice(2, 4) = "ab"   ->  i=4
+        // 2周目: i=4  colon=5  length=3  start=6  ->  slice(6, 9) = "c:d"  ->  i=9 で終了
+        //        添字 7 の : は 2周目の slice が丸ごと持っていくだけで、
+        //        indexOf の探索範囲（i=4 から）には最初の : =添字5 しか引っかからない
 
         return res;
     }
 }
+```
+
+区切り文字だけで分けようとすると、本体に `:` が出た瞬間に壊れる。**長さを先に書けば「ここから何文字読むか」が確定する**ので、中身が何であっても関係なくなる。
+
+鍵は `i` が常に**長さの数字の先頭**しか指さないこと。ループの最後で `i = start + length` と本体を丸ごと飛び越すので、本体は1文字もパーサの目に入らない。だから `:` を含んでいても、数字でも、符号化フォーマットそっくりでも壊れない。
+
+```
+["ab", "c:d"]  ->  "2:ab3:c:d"  ->  ["ab", "c:d"]
+["12", "34"]   ->  "2:122:34"   ->  ["12", "34"]
+["3:abc"]      ->  "5:3:abc"    ->  ["3:abc"]  // 「ここから5文字」と言い切っているので中身を解釈しない
+```
+
+#### この問題は何を訊いているのか
+
+ここだけハッシュを使わない。実体は**シリアライズ**（複数のデータを1本の文字列に平たく潰し、あとで元に戻せるようにすること）で、使っている形式は**長さ前置フレーミング**（length-prefixed framing）と呼ばれる。
+
+「どこまでが1件か」を受け手に伝える方法は、突き詰めると2つしかない。
+
+| 方式 | 例 | 弱点 |
+|---|---|---|
+| 区切り文字を置く | CSV、改行区切り | 中身に区切り文字が出たらエスケープが必要 |
+| 長さを先に書く | `3:Hog` | なし |
+
+長さ前置は HTTP の `Content-Length`、Protocol Buffers などが採用している。TCP は「バイトの流れ」しか運ばず、送信側が区切った単位は途中で消えてしまう。だから受け手が1件の切れ目を自力で復元する手段がどうしても要る——この問題はその縮小版。
+
+### 7. Products of Array Except Self
+
+```ts
+//
 ```
