@@ -285,5 +285,36 @@ class Solution {
 ### 7. Products of Array Except Self
 
 ```ts
-//
+class Solution {
+    /**
+     * @param {number[]} nums
+     * @return {number[]}
+     */
+    productExceptSelf(nums: number[]): number[] {
+        const answer = [];
+
+        // 一旦全ての値をMapに登録しておく
+        const numMap = new Map<number, number>();
+        for (let i = 0; i < nums.length; i++) {
+            // 第2引数はなんでも良い
+            numMap.set(nums[i], 0);
+        }
+
+        for (let j = 0; j < nums.length; j++) {
+            // 一旦消す
+            numMap.delete(nums[j]);
+
+            const value = Array.from(numMap.keys()).reduce((a, b) => {
+                return a * b;
+            });
+
+            answer.push(value);
+
+            // 再度追加する
+            numMap.set(nums[j], 0);
+        }
+
+        return answer;
+    }
+}
 ```
