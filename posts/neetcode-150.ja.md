@@ -284,37 +284,63 @@ class Solution {
 
 ### 7. Products of Array Except Self
 
+自分以外のすべての要素を掛けた値を、各位置について返す。割り算は使わない。
+
+**自分以外 = 左側全部 × 右側全部**。左からの累積積と右からの累積積を掛ければ、自分だけが抜ける。割り算がないので 0 の特別扱いも要らない。
+
+```
+nums = [1, 2, 3, 4]
+            ↑ res[1] = (左: 1) × (右: 3×4) = 12
+```
+
+出力配列 1 本を、左から 1 周・右から 1 周で埋める。
+
 ```ts
 class Solution {
-    /**
-     * @param {number[]} nums
-     * @return {number[]}
-     */
+    // 例: nums = [1, 2, 3, 4]  ->  [24, 12, 8, 6]
     productExceptSelf(nums: number[]): number[] {
-        const answer = [];
+        const n = nums.length;
+        // 長さ n だけ確保した空の箱。中身は ① で全部埋めるので fill は要らない
+        const res = new Array<number>(n);
 
-        // 一旦全ての値をMapに登録しておく
-        const numMap = new Map<number, number>();
-        for (let i = 0; i < nums.length; i++) {
-            // 第2引数はなんでも良い
-            numMap.set(nums[i], 0);
+        // ① 左から: res[i] に「自分より左の積」を置く
+        let prefix = 1;
+        for (let i = 0; i < n; i++) {
+            res[i] = prefix; // 置く時点の prefix に自分はまだ入っていない
+            prefix *= nums[i]; // 置いたあとで自分を混ぜる
         }
+        // res = [1, 1, 2, 6]  （1, 1, 1×2, 1×2×3）
 
-        for (let j = 0; j < nums.length; j++) {
-            // 一旦消す
-            numMap.delete(nums[j]);
-
-            const value = Array.from(numMap.keys()).reduce((a, b) => {
-                return a * b;
-            });
-
-            answer.push(value);
-
-            // 再度追加する
-            numMap.set(nums[j], 0);
+        // ② 右から: そこに「自分より右の積」を掛ける。①の鏡写し
+        let suffix = 1;
+        for (let i = n - 1; i >= 0; i--) {
+            res[i] *= suffix;
+            suffix *= nums[i];
         }
+        // res = [1×24, 1×12, 2×4, 6×1] = [24, 12, 8, 6]
 
-        return answer;
+        return res;
     }
 }
+```
+
+`res[i] = prefix` を**自分を掛ける前**に書くのが肝。逆にすると自分が積に混ざる。時間 O(n)。
+
+#### `Map` / `Set` を使ってはいけない理由
+
+このグループの型に引きずられて「全部 `Map` に入れて自分だけ消し、残りを掛ける」と書くと壊れる。**`Set` が値の重複を潰すのと同じで、`Map` もキーの重複を潰す**（同じキーに `set` すると行が増えず、値が上書きされるだけ）。
+
+```
+[0, 0]     -> Map 上では {0} の 1 件。自分を消すと空になり、積が計算できない
+[2, 2, 3]  -> Map 上では {2, 3} の 2 件。もう 1 つの 2 が積から消えて答えが狂う
+```
+
+積は**同じ値が何個あるか**で変わる。**キーが潰れたときに答えが変わるなら、それをキーにしてはいけない**。3・4 で `Map` が効いたのは、潰れて困る情報が値側（添字・グループの配列）にあったから。
+
+**応用**: 「自分以外の集計」は、**左からの累積と右からの累積に分けて掛け合わせる**。累積和・累積 max でも同じ形が使える。
+
+### 8. Valid Sudoku
+
+```ts
+//
 ```
