@@ -416,3 +416,9 @@ rows[1] = Set{ "6", "1", "9", "5" }   1行目でここまでに見た数字
 ```
 
 だから `rows[r].has(val)` は「**r 行目の袋の中に val が入っているか**」を聞いていることになる。
+
+### 9. Longest Consecutive Sequence
+
+```ts
+//
+```
