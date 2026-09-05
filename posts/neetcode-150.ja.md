@@ -535,6 +535,33 @@ class Solution {
 
 ### 11. Two Integer Sum II
 
+https://neetcode.io/problems/two-integer-sum-ii/question?list=neetcode150
+
+ソート済みの配列から、足して `target` になる2つの**添字**（1 始まり）を返す。
+
+ソート済みなら、**和が目標より大きいか小さいか**が「どちらの端を動かすか」をそのまま教えてくれる。
+
 ```ts
-//
+class Solution {
+    // 例: numbers = [1, 2, 3, 4], target = 3  ->  [1, 2]
+    twoSum(numbers: number[], target: number): number[] {
+        let l = 0;
+        let r = numbers.length - 1;
+
+        // すれ違ったら終わり。同じ要素は2回使えないので l < r（l <= r ではない）
+        while (l < r) {
+            const sum = numbers[l] + numbers[r];
+
+            if (sum > target) r--;      // 大きすぎる -> 右端をひとつ小さい値へ
+            else if (sum < target) l++; // 小さすぎる -> 左端をひとつ大きい値へ
+            else return [l + 1, r + 1]; // 1 始まりなので +1
+        }
+
+        return [];
+    }
+}
 ```
+
+#### よくある間違い: `r` を巻き戻す
+
+`l` を `for` で回し、`l` が進むたびに `r` を右端へ戻す書き方は、動くが**すべてのペアを試す二重ループ**になっていて O(n²)。捨てた候補を拾い直している時点で、two pointers ではなく総当たり。**ポインタは戻さない**のが型。
