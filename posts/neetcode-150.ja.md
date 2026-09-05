@@ -485,8 +485,50 @@ num=5   has(4)?  有る -> 途中。スキップ
 
 ## Two Pointers
 
+両端に置いた2つの添字を、中央へ寄せていく。**1周なので O(n)、しかも追加のメモリを持たない O(1)**。
+
+Arrays & Hashing が**時間をメモリで買う**型だったのに対して、こちらは**メモリを払わずに済ませる**型。
+
 ### 10. Valid Palindrome
 
-```ts
+英数字だけを見て、大文字小文字を無視したとき回文（前から読んでも後ろから読んでも同じ）かを判定する。
 
+素直に書くと、英数字だけを小文字で抜き出した文字列を作り、反転したものと比べる形になる。
+
+```ts
+const cleaned = s.toLowerCase().replace(/[^a-z0-9]/g, '');
+return cleaned === [...cleaned].reverse().join('');
 ```
+
+読みやすいが、**同じ長さの文字列を2本作る**ので O(n) のメモリを使う。回文は「先頭と末尾が同じ」の繰り返しなので、作らずに両端から突き合わせれば済む。
+
+```ts
+// 英数字1文字か判定する。
+// 末尾の i（ignore case）が大文字小文字の差を無視させる。/[a-zA-Z0-9]/ と同じ
+const ALPHA_NUM = /[a-z0-9]/i;
+
+class Solution {
+    // 例: s = "Was it a car or a cat I saw?"  ->  true
+    isPalindrome(s: string): boolean {
+        let l = 0;
+        let r = s.length - 1; // 添字は 0 始まりなので -1
+
+        while (l < r) {
+            // 英数字でなければ、その側だけ1つ内側へ寄せてやり直す
+            if (!ALPHA_NUM.test(s[l])) { l++; continue; }
+            if (!ALPHA_NUM.test(s[r])) { r--; continue; }
+
+            // ここに来た時点で両端とも英数字。比べられる
+            if (s[l].toLowerCase() !== s[r].toLowerCase()) return false;
+
+            l++;
+            r--;
+        }
+
+        // すれ違うまで一度もぶつからなかった = 回文
+        return true;
+    }
+}
+```
+
+**応用**: 「作り直してから比べる」と書きたくなったら、**両端から寄せながらその場で比べられないか**を疑う。回文・2数の和（ソート済み）・容器の水量など、対称性か順序がある並びはたいていこの形に落ちる。
