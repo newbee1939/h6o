@@ -419,6 +419,64 @@ rows[1] = Set{ "6", "1", "9", "5" }   1行目でここまでに見た数字
 
 ### 9. Longest Consecutive Sequence
 
+https://neetcode.io/problems/longest-consecutive-sequence/question?list=neetcode150
+
+1 ずつ増える並びのうち、いちばん長いものの長さを返す。**元の配列で隣り合っている必要はない**ので、`[2, 20, 4, 10, 3, 4, 5]` の答えは 4（`2, 3, 4, 5`）。
+
+ポイントは「**起点だけ数える**」。`num - 1` が無ければ `num` は列の先頭。先頭からしか数えなければ、各値はちょうど1回しか触られない。
+
 ```ts
-//
+class Solution {
+    // 例: nums = [2, 20, 4, 10, 3, 4, 5]  ->  4
+    longestConsecutive(nums: number[]): number {
+        // 重複が消え、「この値はあるか」が O(1) で聞けるようになる
+        const numSet = new Set(nums);
+        // 空配列ならこのまま 0 が返る。特別扱いが要らない
+        let longest = 0;
+
+        for (const num of numSet) {
+            // 1つ前があるなら自分は列の途中。数えるのは先頭の担当なので飛ばす
+            if (numSet.has(num - 1)) continue;
+
+            let length = 1;
+            while (numSet.has(num + length)) length++;
+
+            longest = Math.max(longest, length);
+        }
+
+        return longest;
+    }
+}
 ```
+
+#### `nums = [2, 20, 4, 10, 3, 4, 5]` を追ってみる
+
+まず `new Set(nums)` で重複した `4` が1つに潰れる。`Set` は**入れた順を覚えている**ので、`for...of` はこの順に回る。
+
+```
+numSet = { 2, 20, 4, 10, 3, 5 }
+```
+
+この中に隠れている列は `2,3,4,5`（長さ4）と `10`、`20`（それぞれ長さ1）。答えは 4。
+
+```
+num=2   has(1)?  無い -> 先頭なので数える
+          has(3) 有る -> length=2
+          has(4) 有る -> length=3
+          has(5) 有る -> length=4
+          has(6) 無い -> ここで止まる。longest = 4
+
+num=20  has(19)? 無い -> 先頭
+          has(21) 無い -> length=1。longest は 4 のまま
+
+num=4   has(3)?  有る -> 列の途中。何もせず次へ
+num=10  has(9)?  無い -> 先頭。has(11) 無い -> length=1
+num=3   has(2)?  有る -> 途中。スキップ
+num=5   has(4)?  有る -> 途中。スキップ
+
+-> 4
+```
+
+#### 二重ループに見えるが O(n)
+
+`while` が回るのは先頭（上の例では `2`, `20`, `10` の3回）だけ。しかも1つの列を1回なめるだけなので、`while` の総回数は「各列の長さの合計」= 要素数 n を超えない。`for` の n 回と足しても O(n) に収まる。
