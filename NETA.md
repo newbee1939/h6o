@@ -42,6 +42,10 @@
 - OAuthについて頭を整理する
 - OIDC（OpenID Connect）について頭を整理する
 - Gitの仕組み
+- FOMO インポスター と向き合う
+    - 他人と比べない
+    - SNSを見ない
+    - 過去の自分と比較する
 - git rebase
 - git cherry-pick
 - ソフトウェアエンジニアとして働く私の1日（2026）
