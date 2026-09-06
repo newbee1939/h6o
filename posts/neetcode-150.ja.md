@@ -716,6 +716,14 @@ for (let l = 0; l < r; l++) {
 
 ### 14. Trapping Rain Water
 
+<!-- TODO: Hardなので一旦Skip -->
+
+```ts
+//
+```
+
+### 15. Best Time to Buy and Sell Stock
+
 ```ts
 //
 ```
