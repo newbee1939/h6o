@@ -645,5 +645,36 @@ class Solution {
 ### 13. Container With Most Water
 
 ```ts
-//
+class Solution {
+    /**
+     * @param {number[]} heights
+     * @return {number}
+     */
+    maxArea(heights: number[]): number {
+        let max = 0;
+
+        // 右端のindex
+        let r = heights.length - 1;
+
+        // 左端を徐々に短くしながら、右端の値を変えていく
+        // l（左端）は最大でもrの一つ前までしか来られない
+        for (let l = 0; l < r; l++) {
+            // 実際にrの値を変えないために一時変数へ
+            while (l < r) {
+                const height = Math.min(heights[l], heights[r]);
+                const length = r - l;
+                const value = height * length;
+                max = Math.max(max, value);
+
+                // 右端の幅を狭める
+                r--;
+            }
+
+            // rをもとに戻す
+            r = heights.length - 1
+        }
+
+        return max;
+    }
+}
 ```
