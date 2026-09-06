@@ -644,37 +644,78 @@ class Solution {
 
 ### 13. Container With Most Water
 
+https://neetcode.io/problems/max-water-container/question?list=neetcode150
+
+棒の高さの配列から2本選び、その間に溜められる水の量 `min(2本の高さ) × 幅` の最大値を返す。
+
+11 と同じ形。**両端から始めて、低いほうの棒を内側へ動かす**。
+
 ```ts
 class Solution {
-    /**
-     * @param {number[]} heights
-     * @return {number}
-     */
+    // 例: heights = [1, 7, 2, 5, 4, 7, 3, 6]  ->  36
     maxArea(heights: number[]): number {
+        let l = 0;
+        let r = heights.length - 1;
         let max = 0;
 
-        // 右端のindex
-        let r = heights.length - 1;
+        while (l < r) {
+            const height = Math.min(heights[l], heights[r]); // 低いほうから水が溢れる
+            max = Math.max(max, height * (r - l));
 
-        // 左端を徐々に短くしながら、右端の値を変えていく
-        // l（左端）は最大でもrの一つ前までしか来られない
-        for (let l = 0; l < r; l++) {
-            // 実際にrの値を変えないために一時変数へ
-            while (l < r) {
-                const height = Math.min(heights[l], heights[r]);
-                const length = r - l;
-                const value = height * length;
-                max = Math.max(max, value);
-
-                // 右端の幅を狭める
-                r--;
-            }
-
-            // rをもとに戻す
-            r = heights.length - 1
+            // 低いほうを捨てる。同じ高さならどちらでもいい
+            if (heights[l] <= heights[r]) l++;
+            else r--;
         }
 
         return max;
     }
 }
+```
+
+1周で終わるので時間 O(n)、追加のメモリを持たないので空間 O(1)。
+
+#### なぜ「低いほう」を動かすのか
+
+水量の上限を決めているのは低いほうの棒。そして `l` と `r` は寄る一方なので、**幅はこの先ずっと縮む**。
+
+つまり低い側の棒を残したままでは、高さは今より上がらず（上限は据え置き）、幅は必ず減る。**その棒を含む組み合わせは、もう今の値を超えられない**。だから捨ててよい。
+
+逆に高いほうを動かすと、上限を決めている低い側が残ったまま幅だけ減るので、必ず損をする。
+
+```
+heights = [1, 7, 2, 5, 4, 7, 3, 6]
+           l                    r     min(1, 6) × 7 = 7   -> 低いのは左。l++
+              l                 r     min(7, 6) × 6 = 36  -> 低いのは右。r--
+              l              r        min(7, 3) × 5 = 15  -> r--
+              l           r           min(7, 7) × 4 = 28  -> 同値。l++
+                 l        r           min(2, 7) × 3 = 6   -> l++
+                    l     r           min(5, 7) × 2 = 10  -> l++
+                       l  r           min(4, 7) × 1 = 4   -> l++ ですれ違い終了
+
+-> 36
+```
+
+**捨てる根拠が一意に決まる**（低いほうは常に捨てられる）から two pointers が成立する。
+
+#### よくある間違い: `r` を巻き戻す
+
+`l` を `for` で回し、内側の `while` で `r` を右端まで戻す書き方は、11 で挙げたのと同じ罠。
+
+```ts
+for (let l = 0; l < r; l++) {
+    while (l < r) { /* ... */ r--; }
+    r = heights.length - 1; // ここで巻き戻している = 全ペアを試している
+}
+```
+
+答えは合うが、これは**すべてのペアを試す二重ループ**そのもので O(n²)。制約は `n <= 100,000` なので、最悪 `100,000² / 2 = 50 億回`。ジャッジの制限時間内に終わらず **Time Limit Exceeded**（実行時間の上限を超えたので、ジャッジ側がプロセスを強制終了した合図）になる。
+
+**ポインタは戻さない**。戻した時点で、それは two pointers ではなく総当たり。
+
+**応用**: two pointers が使えるかは「**片方を捨てる根拠が毎回一意に決まるか**」で判断する。11 は和の大小、13 は高さの低さがその根拠だった。根拠が作れなければ two pointers ではない。
+
+### 14. Trapping Rain Water
+
+```ts
+//
 ```
