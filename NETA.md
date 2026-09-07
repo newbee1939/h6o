@@ -71,6 +71,7 @@
     - サブネットマスクなどの記法も含めて
 - OAuthについて頭を整理する
 - OIDC（OpenID Connect）について頭を整理する
+- terraform init/plan/applyの仕組みを理解する
 - Gitの仕組み
 - FOMO インポスター と向き合う
     - 他人と比べない
