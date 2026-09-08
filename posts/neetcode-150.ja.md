@@ -851,5 +851,33 @@ r=4 の 'd' はぶつからない -> 窓 [2,4]="cbd"  ->  3
 ### 17. Longest Repeating Character Replacement
 
 ```ts
-//
+class Solution {
+    /**
+     * @param {string} s
+     * @param {number} k
+     * @return {number}
+     */
+    characterReplacement(s: string, k: number): number {
+        let l = 0;
+        // 連続文字を保存する箱
+        const curChar = new Set();
+        const longest = 0;
+
+        for (let r = 0; r < s.length; r++) {
+            const cur = s[r]; // 現在検査中の文字
+
+            while (curChar.has(cur)) {
+                // 同じ文字の場合、そのまま続ける
+                // lは固定でrの右の長さのみ伸ばす
+                continue;
+            }
+
+            // ここに来るということは、現在の文字がcurCharに含まれていないということ
+            while (!curChar.has(cur) && k > 0) {
+                // s[r] = curChar.get
+                k--;
+            }
+        }
+    }
+}
 ```
