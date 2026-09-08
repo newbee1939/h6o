@@ -797,6 +797,7 @@ class Solution {
         let length = 0;
 
         for (let i = 0; i < s.length; i++) {
+            // 現在検査する値
             const cur = s[i];
 
             if (checked.has(cur)) {
