@@ -343,7 +343,7 @@ class Solution {
 
 **応用**: 「自分以外の集計」は、**左からの累積と右からの累積に分けて掛け合わせる**。累積和・累積 max でも同じ形が使える。
 
-### 9. Longest Consecutive Sequence
+### 8. Longest Consecutive Sequence
 
 https://neetcode.io/problems/longest-consecutive-sequence/question?list=blind75
 
@@ -415,7 +415,7 @@ num=5   has(4)?  有る -> 途中。スキップ
 
 Arrays & Hashing が**時間をメモリで買う**型だったのに対して、こちらは**メモリを払わずに済ませる**型。
 
-### 10. Valid Palindrome
+### 9. Valid Palindrome
 
 https://neetcode.io/problems/is-palindrome/question?list=blind75
 
@@ -461,7 +461,7 @@ class Solution {
 
 **応用**: 「作り直してから比べる」と書きたくなったら、**両端から寄せながらその場で比べられないか**を疑う。回文・2数の和（ソート済み）・容器の水量など、対称性か順序がある並びはたいていこの形に落ちる。
 
-### 12. 3Sum
+### 10. 3Sum
 
 https://neetcode.io/problems/three-integer-sum/question?list=blind75
 
@@ -537,7 +537,7 @@ class Solution {
 
 **応用**: N 個の和を問われたら、**1つ固定して N-1 に落とす**。3Sum は 2Sum に、4Sum は 3Sum に帰着する。重複除去は毎回「ソートして、隣と同じ値なら飛ばす」で済む。
 
-### 13. Container With Most Water
+### 11. Container With Most Water
 
 https://neetcode.io/problems/max-water-container/question?list=blind75
 
@@ -617,7 +617,7 @@ Two Pointers との違いは**動く向き**。two pointers は両端から中�
 
 窓幅が決まっている**固定長**（例: 連続 k 個の最大和）と、条件しだいで伸び縮みする**可変長**（例: 重複のない最長部分文字列）の2種類がある。
 
-### 15. Best Time to Buy and Sell Stock
+### 12. Best Time to Buy and Sell Stock
 
 https://neetcode.io/problems/buy-and-sell-crypto/question?list=blind75
 
@@ -669,7 +669,7 @@ prices =  10    1    5    6    7    1
 
 コードの `minBuy` が、この `l` の位置の価格そのもの。**答えに添字は要らない**ので、ポインタが変数1本に潰れている——`l`, `r` が見えないだけで、やっていることは窓の移動。
 
-### 16. Longest Substring Without Repeating Characters
+### 13. Longest Substring Without Repeating Characters
 
 https://neetcode.io/problems/longest-substring-without-duplicates/question?list=blind75
 
@@ -735,7 +735,7 @@ r=4 の 'd' はぶつからない -> 窓 [2,4]="cbd"  ->  3
 
 **応用**: 「連続した区間で、条件を満たす最長」と来たら sliding window の可変長。書くことは3つだけ——**右端を伸ばす / 条件を壊したら左端を詰める / 窓幅で答えを更新する**。変わるのは「条件」と「窓の状態をどう持つか（`Set` か `Map` か カウンタか）」だけ。
 
-### 17. Longest Repeating Character Replacement
+### 14. Longest Repeating Character Replacement
 
 https://neetcode.io/problems/longest-repeating-substring-with-replacement/question?list=blind75
 
@@ -825,7 +825,7 @@ r=6  [BABB]             窓長4  最多B=3  置換 1  <= k  -> longest は 5 の
 
 ## Stack
 
-### 18. Permutation in String
+### 15. Valid Parentheses
 
 ```ts
 //
