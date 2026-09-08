@@ -1,11 +1,11 @@
 ---
-title: NeetCode150問をTypeScriptで解いてみた
+title: NeetCode75問をTypeScriptで解いてみた
 date: 2026-08-25
 lang: ja
 description: ""
 ---
 
-「データ構造」と「アルゴリズム」の学習のため、NeetCode150をTypeScriptで解いてみた。
+「データ構造」と「アルゴリズム」の学習のため、NeetCodeのBlind 75をTypeScriptで解いてみた。
 
 それぞれの回答と、回答のポイントを自分なりにまとめる。
 
@@ -17,7 +17,7 @@ description: ""
 
 ### 1. Contains Duplicate
 
-https://neetcode.io/problems/duplicate-integer/question?list=neetcode150
+https://neetcode.io/problems/duplicate-integer/question?list=blind75
 
 配列の中に同じ値が2回以上出てくるか判定する。
 
@@ -39,7 +39,7 @@ class Solution {
 
 アナグラム = 言葉の文字を並び替えて、まったく別の意味の言葉や文章を作る言葉遊び
 
-https://neetcode.io/problems/is-anagram/question?list=neetcode150
+https://neetcode.io/problems/is-anagram/question?list=blind75
 
 2つの文字列が、同じ文字を同じ個数ずつ持っているかを判定する。並び順は問わない。
 
@@ -72,7 +72,7 @@ class Solution {
 
 ### 3. Two Sum
 
-https://neetcode.io/problems/two-integer-sum/question?list=neetcode150
+https://neetcode.io/problems/two-integer-sum/question?list=blind75
 
 足して `target` になる2つの要素の**添字**を返す。
 
@@ -113,7 +113,7 @@ class Solution {
 
 ### 4. Group Anagrams
 
-https://neetcode.io/problems/anagram-groups/question?list=neetcode150
+https://neetcode.io/problems/anagram-groups/question?list=blind75
 
 アナグラム同士をグループにまとめる。
 
@@ -142,7 +142,7 @@ class Solution {
 
 ### 5. Top K Frequent Elements
 
-https://neetcode.io/problems/top-k-elements-in-list/question?list=neetcode150
+https://neetcode.io/problems/top-k-elements-in-list/question?list=blind75
 
 出現回数の多い順に上位 `k` 個の値を返す。
 
@@ -224,6 +224,8 @@ class Solution {
 
 ### 6. Encode and Decode Strings
 
+https://neetcode.io/problems/string-encode-and-decode/question?list=blind75
+
 ```ts
 class Solution {
     // 例: strs = ["ab", "c:d"]  ->  "2:ab3:c:d"
@@ -284,6 +286,8 @@ class Solution {
 
 ### 7. Products of Array Except Self
 
+https://neetcode.io/problems/products-of-array-discluding-self/question?list=blind75
+
 自分以外のすべての要素を掛けた値を、各位置について返す。割り算は使わない。
 
 **自分以外 = 左側全部 × 右側全部**。左からの累積積と右からの累積積を掛ければ、自分だけが抜ける。割り算がないので 0 の特別扱いも要らない。
@@ -339,87 +343,9 @@ class Solution {
 
 **応用**: 「自分以外の集計」は、**左からの累積と右からの累積に分けて掛け合わせる**。累積和・累積 max でも同じ形が使える。
 
-### 8. Valid Sudoku
-
-https://neetcode.io/problems/valid-sudoku/question?list=neetcode150
-
-9×9 の盤面が、行・列・3×3 の箱それぞれで数字が重複していないかを判定する。空マス `.` は無視。埋まっている必要も、解ける必要もない。**今ある数字が矛盾していないか**だけを見る。
-
-まず用語を分けておく。この問題は**数えるものが 2 種類あって、そこが混ざると読めなくなる**。
-
-| | 何か | 個数 |
-|---|---|---|
-| **マス** | 数字が 1 つ入る最小の枠。座標は `(r, c)` | **81** |
-| **箱** | 太線で区切られた 3×3 のかたまり | **9** |
-
-81 マスが 9 個の箱に分かれている（**1 箱に 9 マス**入っていて 9 × 9 = 81）。以降、番号 0〜8 が出てきたら**マスではなく箱を数えている**。
-
-やっていることは 1（Contains Duplicate）と同じ「重複判定」。違うのは**1 マスの数字が 3 つのグループに同時に属している**こと。`board[4][7]` の数字は「4 行目の仲間」であり「7 列目の仲間」であり「箱 5 の仲間」でもある。
-
-```
-1 の重複判定:  数字の行き先は1つ  ->  Set 1個
-この問題:      数字の行き先は3つ  ->  Set を 行9個 + 列9個 + 箱9個 = 27個
-```
-
-だったら**袋を 27 個用意して、1 マスごとに 3 つとも確認する**だけでいい。袋は「グループの数」だけ要るのであって、マスの数（81）は要らない。
-
-```ts
-class Solution {
-    isValidSudoku(board: string[][]): boolean {
-        // 袋はマスの数（81）ではなく「グループの数」だけ用意する
-        // 行 0〜8 それぞれに「その行で見た数字を入れる袋」を1つずつ。計9個
-        // rows[3] は「3行目に出た数字の集合」という意味になる
-        const rows = Array.from({ length: 9 }, () => new Set<string>());
-        const cols = Array.from({ length: 9 }, () => new Set<string>()); // 列は9本なので9個
-        const boxes = Array.from({ length: 9 }, () => new Set<string>()); // 箱も9個（81個ではない）
-
-        // 上の行から順に、各行を左から右へ。81マスをちょうど1回ずつ見る
-        for (let r = 0; r < 9; r++) {
-            for (let c = 0; c < 9; c++) {
-                const val = board[r][c];
-                if (val === '.') continue; // 空マスは何も主張していないので飛ばす
-
-                // 「今いるマスが、9個の箱のうちどれに入っているか」を求める。
-                // 箱は9個しかないので b は 0〜8。同じ箱の中の9マスは全員おなじ b になる。
-                // 座標 (r, c) は81通りあるが、b はそれを9通りに畳んだもの。
-                // この1行だけが本問の考えどころ（詳しくは下で分解する）
-                const b = Math.floor(r / 3) * 3 + Math.floor(c / 3);
-
-                // 行・列・箱の3つの袋のどれか1つにでも同じ数字が既にあれば、そこが重複
-                if (rows[r].has(val) || cols[c].has(val) || boxes[b].has(val)) return false;
-
-                // なければ3つの袋すべてに登録して次のマスへ
-                rows[r].add(val);
-                cols[c].add(val);
-                boxes[b].add(val);
-            }
-        }
-
-        // 81マス見終わって一度もぶつからなかった = 有効な盤面
-        return true;
-    }
-}
-```
-
-#### `rows[0]` の中身は「1 個の `Set`」
-
-`rows` は **`Set` が 9 個入った配列**。`rows[0]` はその 1 個目の `Set` そのもの。配列のマス 1 つに、`Set` が丸ごと 1 個ずつ入っている（入れ子）。
-
-```
-rows = [ Set{} , Set{} , Set{} , Set{} , Set{} , Set{} , Set{} , Set{} , Set{} ]
-          ↑0      ↑1      ↑2      ↑3      ↑4      ↑5      ↑6      ↑7      ↑8
-       0行目用  1行目用                                                8行目用
-
-盤面を進むと、それぞれの袋が独立に育っていく:
-rows[0] = Set{ "5", "3", "7" }        0行目でここまでに見た数字
-rows[1] = Set{ "6", "1", "9", "5" }   1行目でここまでに見た数字
-```
-
-だから `rows[r].has(val)` は「**r 行目の袋の中に val が入っているか**」を聞いていることになる。
-
 ### 9. Longest Consecutive Sequence
 
-https://neetcode.io/problems/longest-consecutive-sequence/question?list=neetcode150
+https://neetcode.io/problems/longest-consecutive-sequence/question?list=blind75
 
 1 ずつ増える並びのうち、いちばん長いものの長さを返す。**元の配列で隣り合っている必要はない**ので、`[2, 20, 4, 10, 3, 4, 5]` の答えは 4（`2, 3, 4, 5`）。
 
@@ -491,6 +417,8 @@ Arrays & Hashing が**時間をメモリで買う**型だったのに対して�
 
 ### 10. Valid Palindrome
 
+https://neetcode.io/problems/is-palindrome/question?list=blind75
+
 英数字だけを見て、大文字小文字を無視したとき回文（前から読んでも後ろから読んでも同じ）かを判定する。
 
 素直に書くと、英数字だけを小文字で抜き出した文字列を作り、反転したものと比べる形になる。
@@ -533,42 +461,9 @@ class Solution {
 
 **応用**: 「作り直してから比べる」と書きたくなったら、**両端から寄せながらその場で比べられないか**を疑う。回文・2数の和（ソート済み）・容器の水量など、対称性か順序がある並びはたいていこの形に落ちる。
 
-### 11. Two Integer Sum II
-
-https://neetcode.io/problems/two-integer-sum-ii/question?list=neetcode150
-
-ソート済みの配列から、足して `target` になる2つの**添字**（1 始まり）を返す。
-
-ソート済みなら、**和が目標より大きいか小さいか**が「どちらの端を動かすか」をそのまま教えてくれる。
-
-```ts
-class Solution {
-    // 例: numbers = [1, 2, 3, 4], target = 3  ->  [1, 2]
-    twoSum(numbers: number[], target: number): number[] {
-        let l = 0;
-        let r = numbers.length - 1;
-
-        // すれ違ったら終わり。同じ要素は2回使えないので l < r（l <= r ではない）
-        while (l < r) {
-            const sum = numbers[l] + numbers[r];
-
-            if (sum > target) r--;      // 大きすぎる -> 右端をひとつ小さい値へ
-            else if (sum < target) l++; // 小さすぎる -> 左端をひとつ大きい値へ
-            else return [l + 1, r + 1]; // 1 始まりなので +1
-        }
-
-        return [];
-    }
-}
-```
-
-#### よくある間違い: `r` を巻き戻す
-
-`l` を `for` で回し、`l` が進むたびに `r` を右端へ戻す書き方は、動くが**すべてのペアを試す二重ループ**になっていて O(n²)。捨てた候補を拾い直している時点で、two pointers ではなく総当たり。**ポインタは戻さない**のが型。
-
 ### 12. 3Sum
 
-https://neetcode.io/problems/three-integer-sum/question?list=neetcode150
+https://neetcode.io/problems/three-integer-sum/question?list=blind75
 
 配列から、足して 0 になる3数の組をすべて返す（同じ組は1回だけ）。
 
@@ -644,7 +539,7 @@ class Solution {
 
 ### 13. Container With Most Water
 
-https://neetcode.io/problems/max-water-container/question?list=neetcode150
+https://neetcode.io/problems/max-water-container/question?list=blind75
 
 棒の高さの配列から2本選び、その間に溜められる水の量 `min(2本の高さ) × 幅` の最大値を返す。
 
@@ -714,14 +609,6 @@ for (let l = 0; l < r; l++) {
 
 **応用**: two pointers が使えるかは「**片方を捨てる根拠が毎回一意に決まるか**」で判断する。11 は和の大小、13 は高さの低さがその根拠だった。根拠が作れなければ two pointers ではない。
 
-### 14. Trapping Rain Water
-
-<!-- TODO: Hardなので一旦Skip -->
-
-```ts
-//
-```
-
 ## Sliding Window
 
 連続した区間（＝窓）を右へずらしながら、その区間についての答えを更新していく。
@@ -732,7 +619,7 @@ Two Pointers との違いは**動く向き**。two pointers は両端から中�
 
 ### 15. Best Time to Buy and Sell Stock
 
-https://neetcode.io/problems/buy-and-sell-crypto/question
+https://neetcode.io/problems/buy-and-sell-crypto/question?list=blind75
 
 株価の配列から、1回だけ買って**そのあとの日に**売るときの最大利益を返す。損しかしないなら取引しない（＝0）。
 
@@ -784,7 +671,7 @@ prices =  10    1    5    6    7    1
 
 ### 16. Longest Substring Without Repeating Characters
 
-https://neetcode.io/problems/longest-substring-without-duplicates
+https://neetcode.io/problems/longest-substring-without-duplicates/question?list=blind75
 
 同じ文字を含まない**連続した**部分文字列のうち、いちばん長いものの長さを返す。
 
@@ -850,7 +737,7 @@ r=4 の 'd' はぶつからない -> 窓 [2,4]="cbd"  ->  3
 
 ### 17. Longest Repeating Character Replacement
 
-https://neetcode.io/problems/longest-repeating-substring-with-replacement
+https://neetcode.io/problems/longest-repeating-substring-with-replacement/question?list=blind75
 
 大文字だけの文字列 `s` について、**好きな文字を k 個まで別の文字に置き換えてよい**。そのうえで「全部同じ文字」にできる連続部分文字列の、最長の長さを返す。
 
@@ -935,6 +822,8 @@ r=6  [BABB]             窓長4  最多B=3  置換 1  <= k  -> longest は 5 の
 `r=4` の窓 `"AAABA"` は「`B` を1個 `A` に替えれば `AAAAA`」なので条件を満たす。**実際に替えてはいない**。「4 個の `A` と、それ以外1個」という数え上げだけで判断している。
 
 **応用**: 「〜を k 個まで変更してよい。条件を満たす最長は？」は sliding window の定番の形。やることは**「今の窓を条件に合わせるコストを、数え上げで表す」**の1点だけ。コストが k 以下なら伸ばし、超えたら縮める。この問題ではそれが `窓の長さ − 最頻文字の個数` だった。
+
+## Stack
 
 ### 18. Permutation in String
 
