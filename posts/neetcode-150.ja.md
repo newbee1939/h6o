@@ -784,33 +784,72 @@ prices =  10    1    5    6    7    1
 
 ### 16. Longest Substring Without Repeating Characters
 
+https://neetcode.io/problems/longest-substring-without-duplicates
+
+同じ文字を含まない**連続した**部分文字列のうち、いちばん長いものの長さを返す。
+
+15 は窓の「左端の価格」だけ覚えれば足りたが、今回は**窓の中身そのもの**を覚える必要がある。「この文字はもう窓に入っているか」を O(1) で聞きたいので、入れ物は `Set`。
+
+型は毎回これ。**右端を1つ伸ばす → 条件を満たさなくなったら、満たすまで左端を詰める → 今の窓幅で答えを更新する**。
+
 ```ts
 class Solution {
-    /**
-     * @param {string} s
-     * @return {number}
-     */
+    // 例: s = "zxyzxyz"  ->  3
+    //         0123456
     lengthOfLongestSubstring(s: string): number {
-        let maxLength = 0;
+        // 窓 [l, r] の中にいる文字。窓の中身と常に一致させる
+        const window = new Set<string>();
         let l = 0;
-        let checked = new Set();
-        let length = 0;
+        let longest = 0;
 
-        for (let i = 0; i < s.length; i++) {
-            // 現在検査する値
-            const cur = s[i];
-
-            if (checked.has(cur)) {
-                checked.delete(cur);
+        for (let r = 0; r < s.length; r++) {
+            // 右端の文字が窓の中にあるなら、その文字が窓から出るまで左端を詰める。
+            // 例: 窓が "zxy"（l=0, r=2）のとき、r=3 に 'z' が来る
+            //     -> 窓に 'z' がいるので、左端の s[0]='z' を捨てて l=1
+            //     -> 窓は "xy"。'z' がいなくなったので停止
+            while (window.has(s[r])) {
+                window.delete(s[l]);
                 l++;
-            } else {
-                length++;
             }
-            checked.add(cur);
-            maxLength = Math.max(maxLength, length);
+
+            window.add(s[r]); // 窓は "xyz"（l=1, r=3）になった
+            // 添字は両端とも含むので +1（幅ではなく個数を数えている）。3 - 1 + 1 = 3
+            longest = Math.max(longest, r - l + 1);
         }
 
-        return maxLength;
+        return longest;
     }
 }
+```
+
+`l` も `r` も右に進むだけなので、各文字は `add` で1回・`delete` で高々1回しか触られない。時間 O(n)、空間 O(m)（m は使われている文字の種類数）。
+
+#### `if` ではなく `while` である理由
+
+重複が見つかったとき、左端を**1つ**動かせば済むとは限らない。捨てるべきなのは「ぶつかった文字が窓から出るまで」なので、そこまで詰め続ける。
+
+```
+s = "abcbd"
+     01234
+
+r=3 の 'b' が窓 [0,2]="abc" とぶつかる
+  l=0: 'a' を捨てる -> 窓は "bc"。まだ 'b' がいる
+  l=1: 'b' を捨てる -> 窓は "c"。ぶつからなくなったので停止
+  'b' を入れて 窓 [2,3]="cb"
+
+r=4 の 'd' はぶつからない -> 窓 [2,4]="cbd"  ->  3
+```
+
+`l++` を1回で済ませると、`l` が 1 のまま `'b'` を入れることになり、窓が `"bcb"` という**重複を含んだ状態**になる。そのまま `'d'` まで伸びて 4 を返してしまう（正解は 3）。**窓の中身と `Set` の中身がズレた時点で、以降の判定は全部信用できない。**
+
+#### 長さを変数で持たない
+
+`length` のようなカウンタを別に持って `l++` のたびに調整する書き方もできるが、**幅は `r - l + 1` でいつでも計算できる**ので持たないほうがいい。同じ事実を2箇所で管理すると、片方の更新漏れがそのままバグになる。**状態は `l` と `Set` の2つだけ**に絞れば、壊れる余地がなくなる。
+
+**応用**: 「連続した区間で、条件を満たす最長」と来たら sliding window の可変長。書くことは3つだけ——**右端を伸ばす / 条件を壊したら左端を詰める / 窓幅で答えを更新する**。変わるのは「条件」と「窓の状態をどう持つか（`Set` か `Map` か カウンタか）」だけ。
+
+### 17. Longest Repeating Character Replacement
+
+```ts
+//
 ```
