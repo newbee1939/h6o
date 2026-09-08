@@ -5,7 +5,7 @@ lang: ja
 description: ""
 ---
 
-「データ構造」と「アルゴリズム」の学習のため、NeetCodeのBlind 75をTypeScriptで解いてみた。
+「データ構造」と「アルゴリズム」の学習のため、NeetCodeのBlind 75をTypeScriptで解いてみた。（Hard以外）
 
 それぞれの回答と、回答のポイントを自分なりにまとめる。
 
