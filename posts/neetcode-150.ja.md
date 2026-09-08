@@ -785,5 +785,31 @@ prices =  10    1    5    6    7    1
 ### 16. Longest Substring Without Repeating Characters
 
 ```ts
-//
+class Solution {
+    /**
+     * @param {string} s
+     * @return {number}
+     */
+    lengthOfLongestSubstring(s: string): number {
+        let maxLength = 0;
+        let l = 0;
+        let checked = new Set();
+        let length = 0;
+
+        for (let i = 0; i < s.length; i++) {
+            const cur = s[i];
+
+            if (checked.has(cur)) {
+                checked.delete(cur);
+                l++;
+            } else {
+                length++;
+            }
+            checked.add(cur);
+            maxLength = Math.max(maxLength, length);
+        }
+
+        return maxLength;
+    }
+}
 ```
