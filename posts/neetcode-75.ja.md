@@ -9,11 +9,11 @@ description: ""
 
 「データ構造」と「アルゴリズム」の学習のため、NeetCodeのBlind 75をTypeScriptで解いてみた。（Hard以外）
 
-それぞれの回答と、回答のポイントを自分なりにまとめる。
+それぞれの解答と、そのポイントを自分なりにまとめる。
 
 ## Arrays & Hashing
 
-配列を1回なめながら、見たものをハッシュ（キーを渡すと数値を返す関数）に記録していく——このグループはほぼこれに尽きる。
+配列を1回なめながら、見たものをハッシュ（`Map` や `Set` のように、値から置き場所を計算して一発で出し入れできる表）に記録していく——このグループはほぼこれに尽きる。
 
 素直にやると二重ループで O(n²) になる問題を、「探す」という操作をハッシュに肩代わりさせて O(n) に落とす。ハッシュテーブルは値からその置き場所を計算で求めるので、中に何個入っていても1回の探索で済む（平均 O(1)）。その代わり、記録する分のメモリ O(n) を払う。**時間をメモリで買う**のがこのグループの型。
 
@@ -25,6 +25,7 @@ https://neetcode.io/problems/duplicate-integer/question?list=blind75
 
 ```ts
 class Solution {
+    // 例: nums = [1, 2, 3, 3]  ->  true
     hasDuplicate(nums: number[]): boolean {
         const seen = new Set<number>();
         // ループを1度回すだけ
@@ -39,11 +40,9 @@ class Solution {
 
 ### 2. Valid Anagram
 
-アナグラム = 言葉の文字を並び替えて、まったく別の意味の言葉や文章を作る言葉遊び
-
 https://neetcode.io/problems/is-anagram/question?list=blind75
 
-2つの文字列が、同じ文字を同じ個数ずつ持っているかを判定する。並び順は問わない。
+2つの文字列が、同じ文字を同じ個数ずつ持っているかを判定する。並び順は問わない（アナグラム = 言葉の文字を並び替えて、まったく別の意味の言葉や文章を作る言葉遊び）。
 
 **ここで効くのは「有無」ではなく「個数」**。`Set` で「その文字があるか」を見る解き方は通らない。`s = "aab"` と `t = "abb"` はどちらも使っている文字が `{a, b}` で同じなので、有無だけ見ると一致してしまう。
 
@@ -51,6 +50,7 @@ https://neetcode.io/problems/is-anagram/question?list=blind75
 
 ```ts
 class Solution {
+    // 例: s = "racecar", t = "carrace"  ->  true
     isAnagram(s: string, t: string): boolean {
         // 長さが違えば個数が一致しようがない
         if (s.length !== t.length) return false;
@@ -89,6 +89,7 @@ nums[j] === target - nums[i]     i を固定すれば、右辺は確定した1�
 
 ```ts
 class Solution {
+    // 例: nums = [3, 4, 5, 6], target = 7  ->  [0, 1]
     twoSum(nums: number[], target: number): number[] {
         // 値 -> その値があった添字（index）
         const seen = new Map<number, number>();
@@ -123,6 +124,7 @@ https://neetcode.io/problems/anagram-groups/question?list=blind75
 
 ```ts
 class Solution {
+    // 例: strs = ["act", "pots", "cat", "stop"]  ->  [["act", "cat"], ["pots", "stop"]]
     groupAnagrams(strs: string[]): string[][] {
         // ソート済みの文字列 -> そこに属する元の文字列たち
         const groups = new Map<string, string[]>();
@@ -181,7 +183,7 @@ class Solution {
 - `.sort((a, b) => ...)` の比較関数は「負なら a が前、正なら b が前」。`b[1] - a[1]` は回数が大きいほうを前に出すので降順
 - `([num]) => num` は分割代入。`pair => pair[0]` と同じだが、**添字ではなく名前で読める**ぶん間違えにくい
 
-#### もう一段速い解: バケットソート（できれば）
+#### もう一段速い解: バケットソート
 
 ここで効くのは、**出現回数は必ず 1〜n の整数**という点（n は `nums` の長さ）。小さい整数なら**そのまま配列の添字として使える**。
 
@@ -228,6 +230,8 @@ class Solution {
 
 https://neetcode.io/problems/string-encode-and-decode/question?list=blind75
 
+文字列の配列を1本の文字列に符号化し、そこから元の配列を復元する。中身にどんな文字が入っていてもよい。
+
 ```ts
 class Solution {
     // 例: strs = ["ab", "c:d"]  ->  "2:ab3:c:d"
@@ -255,8 +259,8 @@ class Solution {
         }
         // 1周目: i=0  colon=1  length=2  start=2  ->  slice(2, 4) = "ab"   ->  i=4
         // 2周目: i=4  colon=5  length=3  start=6  ->  slice(6, 9) = "c:d"  ->  i=9 で終了
-        //        添字 7 の : は 2周目の slice が丸ごと持っていくだけで、
-        //        indexOf の探索範囲（i=4 から）には最初の : =添字5 しか引っかからない
+        //        添字 7 の : は 2周目の slice が丸ごと持っていくだけ。
+        //        indexOf が i=4 から探すと、先に見つかるのは添字 5 の : のほう
 
         return res;
     }
@@ -469,7 +473,7 @@ https://neetcode.io/problems/three-integer-sum/question?list=blind75
 
 配列から、足して 0 になる3数の組をすべて返す（同じ組は1回だけ）。
 
-3数を同時に考えると詰む。**1つを `for` で固定すれば、残りは「ソート済みの並びから和が `-nums[i]` になる2数」**、つまり問題 11 そのもの。添字は3本あるが、**`i` は two pointers の片割れではない**。動くのは `l` と `r` だけで、`i` は1つずつ右へずれる柱。
+3数を同時に考えると詰む。**1つを `for` で固定すれば、残りは「ソート済みの並びから和が `-nums[i]` になる2数」**、つまりソート済み版の 2Sum に落ちる。添字は3本あるが、**`i` は two pointers の片割れではない**。動くのは `l` と `r` だけで、`i` は1つずつ右へずれる柱。
 
 ```
 sort 済み:  [ -4,  -1,  -1,   0,   1,   2 ]
@@ -496,7 +500,7 @@ class Solution {
             // i > 0 は nums[-1]（undefined）と比べないため。continue なのは次の値は試すから
             if (i > 0 && nums[i] === nums[i - 1]) continue;
 
-            // ここから先は「和が -nums[i] になる2数を探す」= 問題 11
+            // ここから先は「和が -nums[i] になる2数を探す」= ソート済み版の 2Sum
             let l = i + 1;
             let r = nums.length - 1;
 
@@ -545,7 +549,7 @@ https://neetcode.io/problems/max-water-container/question?list=blind75
 
 棒の高さの配列から2本選び、その間に溜められる水の量 `min(2本の高さ) × 幅` の最大値を返す。
 
-11 と同じ形。**両端から始めて、低いほうの棒を内側へ動かす**。
+9 と同じ形。**両端から始めて、低いほうの棒を内側へ動かす**。
 
 ```ts
 class Solution {
@@ -596,7 +600,7 @@ heights = [1, 7, 2, 5, 4, 7, 3, 6]
 
 #### よくある間違い: `r` を巻き戻す
 
-`l` を `for` で回し、内側の `while` で `r` を右端まで戻す書き方は、11 で挙げたのと同じ罠。
+`l` を `for` で回し、内側の `while` で `r` を右端まで戻す書き方は、10 で挙げたのと同じ罠。
 
 ```ts
 for (let l = 0; l < r; l++) {
@@ -609,7 +613,7 @@ for (let l = 0; l < r; l++) {
 
 **ポインタは戻さない**。戻した時点で、それは two pointers ではなく総当たり。
 
-**応用**: two pointers が使えるかは「**片方を捨てる根拠が毎回一意に決まるか**」で判断する。11 は和の大小、13 は高さの低さがその根拠だった。根拠が作れなければ two pointers ではない。
+**応用**: two pointers が使えるかは「**片方を捨てる根拠が毎回一意に決まるか**」で判断する。10 は和の大小、11 は高さの低さがその根拠だった。根拠が作れなければ two pointers ではない。
 
 ## Sliding Window
 
@@ -647,7 +651,7 @@ class Solution {
 }
 ```
 
-時間 O(n)、空間 O(1)。元のコードと中身は同じで、`if` 2つを `Math.max` / `Math.min` に、添字ループを `for...of` に畳んだだけ。**添字 `i` を一度も使っていないなら `i` は消せる**。
+時間 O(n)、空間 O(1)。**添字 `i` を一度も使わないなら、ループは `for...of` に畳める**。
 
 #### どこが Sliding Window なのか
 
@@ -677,7 +681,7 @@ https://neetcode.io/problems/longest-substring-without-duplicates/question?list=
 
 同じ文字を含まない**連続した**部分文字列のうち、いちばん長いものの長さを返す。
 
-15 は窓の「左端の価格」だけ覚えれば足りたが、今回は**窓の中身そのもの**を覚える必要がある。「この文字はもう窓に入っているか」を O(1) で聞きたいので、入れ物は `Set`。
+12 は窓の「左端の価格」だけ覚えれば足りたが、今回は**窓の中身そのもの**を覚える必要がある。「この文字はもう窓に入っているか」を O(1) で聞きたいので、入れ物は `Set`。
 
 型は毎回これ。**右端を1つ伸ばす → 条件を満たさなくなったら、満たすまで左端を詰める → 今の窓幅で答えを更新する**。
 
@@ -764,7 +768,7 @@ https://neetcode.io/problems/longest-repeating-substring-with-replacement/questi
 
 **「置き換える」という操作が、「窓の中の文字を数える」に化けた。** ここが本問の全部。
 
-**③ 判定式ができれば、あとは 16 と同じ型に乗るだけ。**
+**③ 判定式ができれば、あとは 13 と同じ型に乗るだけ。**
 
 「連続した区間で、条件を満たす最長」なので sliding window の可変長。右端を伸ばし、置換数が `k` を超えたら左端を詰め、窓幅で答えを更新する。
 
