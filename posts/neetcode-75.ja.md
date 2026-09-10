@@ -964,6 +964,65 @@ l===r=4  ->  nums[4] = 0
 
 ### 17. Search in Rotated Sorted Array
 
+https://neetcode.io/problems/find-target-in-rotated-sorted-array/question?list=blind75
+
+回転済みの配列から `target` の添字を返す。無ければ -1。
+
+回転済みの配列は**昇順の並びが2本つながったもの**。段差の位置は 16（Find Minimum in Rotated Sorted Array）で求めたので、**そこで割ってしまえば、ただのソート済み配列が2本**になる。あとは両方に教科書どおりの二分探索をかけるだけ。
+
+```ts
+class Solution {
+    // 例: nums = [4, 5, 6, 7, 0, 1, 2], target = 0  ->  4
+    search(nums: number[], target: number): number {
+        // 段差の直後 = 小さいほうの並びの先頭
+        const pivot = this.findMinIndex(nums);
+
+        const left = this.binarySearch(nums, target, 0, pivot - 1);
+        return left !== -1 ? left : this.binarySearch(nums, target, pivot, nums.length - 1);
+    }
+
+    // 16 と同じ
+    private findMinIndex(nums: number[]): number {
+        let l = 0;
+        let r = nums.length - 1;
+
+        while (l < r) {
+            const m = Math.floor((l + r) / 2);
+
+            if (nums[m] < nums[r]) r = m;
+            else l = m + 1;
+        }
+
+        return l;
+    }
+
+    // 範囲 [l, r] だけを見る、ふつうの二分探索
+    private binarySearch(nums: number[], target: number, l: number, r: number): number {
+        while (l <= r) {
+            const m = Math.floor((l + r) / 2);
+
+            if (nums[m] === target) return m;
+            if (nums[m] < target) l = m + 1;
+            else r = m - 1;
+        }
+
+        return -1;
+    }
+}
+```
+
+二分探索が最大2回なので O(log n)、空間 O(1)。
+
+- **「target がどちらの並びにいるか」を判定しない**。判定すれば探索は1回で済むが、境界の不等号を間違える余地が生まれる。**2回まわして定数を払うほうが壊れない**
+- 回転していない配列も特別扱い不要。`pivot = 0` になり、左の範囲が空 `[0, -1]` になるだけ（`l <= r` が最初から偽で即 -1）
+- ループ条件が `l < r` と `l <= r` で違うのは、**答えが必ずあるか**の差。最小値は必ずいるので幅1に潰れた時点で確定、`target` は無いかもしれないので範囲が空になるまで回す
+
+**応用**: 新しく見える問題でも、**すでに解いた問題に帰着できないか**をまず考える。ここでは 16（段差探し）が済んでいたので、残りは教科書どおりの二分探索だった。
+
+## Linked List
+
+### 18. Reverse Linked List
+
 ```ts
 //
 ```
