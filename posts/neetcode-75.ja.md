@@ -1078,6 +1078,52 @@ class Solution {
 
 ### 19. Merge Two Sorted Linked Lists
 
+https://neetcode.io/problems/merge-two-sorted-linked-lists/question?list=blind75
+
+昇順に並んだ2本のリストを、1本の昇順のリストにまとめる。
+
+**両方ソート済み**なので、次に来るのは必ず「2本の先頭のうち小さいほう」。取ったらそのリストだけ1つ進め、また先頭同士を比べる——それだけ。
+
+ただし答えの先頭がどちらから来るかは1回目の比較まで決まらない。そこで**ダミーノードを1つ手前に置く**と「先頭だけ特別扱い」が消え、最後に `dummy.next` を返せばよくなる。
+
+```ts
+class Solution {
+    // 例: list1 = [1, 2, 4], list2 = [1, 3, 5]  ->  [1, 1, 2, 3, 4, 5]
+    mergeTwoLists(list1: ListNode | null, list2: ListNode | null): ListNode | null {
+        const dummy = new ListNode(0); // 答えの1つ手前に置く見張り役
+        let tail = dummy;              // できあがった部分の末尾
+
+        // 両方に残りがあるあいだは、小さいほうを末尾につなぐ
+        while (list1 && list2) {
+            if (list1.val <= list2.val) {
+                tail.next = list1;
+
+                tail = list1;
+                list1 = list1.next;
+            } else {
+                tail.next = list2;
+
+                tail = list2;
+                list2 = list2.next;
+            }
+        }
+
+        // 片方が尽きたら、残りは丸ごとつなぐだけでいい（そこはもう昇順に並んでいる）
+        tail.next = list1 ?? list2;
+
+        return dummy.next; // dummy の次が本当の先頭
+    }
+}
+```
+
+各ノードを1回ずつ見るので O(n + m)、変数を数個使うだけなので空間 O(1)。
+
+- 空リストの分岐は要らない。`while` に入らず `tail.next = list1 ?? list2` がそのまま拾う
+
+**応用**: **先頭が特別になる問題はダミーノードで潰す**。「最初の1回だけ違う」形の分岐が出てきたら、1つ手前にダミーを置けないか疑う。
+
+### 20. Linked List Cycle Detection
+
 ```ts
 //
 ```
