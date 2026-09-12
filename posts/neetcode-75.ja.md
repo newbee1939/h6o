@@ -1022,5 +1022,32 @@ class Solution {
 ### 18. Reverse Linked List
 
 ```ts
-//
+/**
+ * Definition for singly-linked list.
+ * class ListNode {
+ *     constructor(val = 0, next = null) {
+ *         this.val = val;
+ *         this.next = next;
+ *     }
+ * }
+ */
+
+class Solution {
+    /**
+     * @param {ListNode} head
+     * @return {ListNode}
+     */
+    reverseList(head: ListNode | null): ListNode {
+        if (head === null) {
+            return head;
+        }
+
+        // 次のノードからみた次のノードを、現在のノードにする
+        head.next = head;
+
+        this.reverseList(head);
+
+        return head;
+    }
+}
 ```
