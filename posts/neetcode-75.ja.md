@@ -1096,15 +1096,16 @@ class Solution {
         // 両方に残りがあるあいだは、小さいほうを末尾につなぐ
         while (list1 && list2) {
             if (list1.val <= list2.val) {
-                tail.next = list1;
-
-                tail = list1;
-                list1 = list1.next;
+                // 3行とも必要で、この順番でないと壊れる
+                tail.next = list1;  // ① つなぐ: 今の末尾の後ろに list1 を置く（つながりを変えるのはこの行だけ）
+                tail = list1;       // ② 進む: 末尾の印を、いまつないだ list1 へ移す（ないと次も同じ場所を上書き）
+                list1 = list1.next; // ③ 次へ: list1 を次の候補へ（先にやると tail が1つ先を指してしまう）
+                // 例: dummy → 1 で list1 = 3 のとき
+                //   ① dummy → 1 → 3   ② tail = 3   ③ list1 = 3 の次
             } else {
-                tail.next = list2;
-
-                tail = list2;
-                list2 = list2.next;
+                tail.next = list2;  // 同じく ① つなぐ
+                tail = list2;       // ② 進む
+                list2 = list2.next; // ③ 次へ
             }
         }
 
