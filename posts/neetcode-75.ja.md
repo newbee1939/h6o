@@ -1125,6 +1125,73 @@ class Solution {
 
 ### 20. Linked List Cycle Detection
 
+https://neetcode.io/problems/linked-list-cycle-detection/question?list=blind75
+
+連結リストに循環（どこかのノードの `next` が、すでに通ったノードへ戻っている）があるか判定する。
+
+```ts
+class Solution {
+    // 例: [1, 2, 3, 4] で末尾が 2 に戻る  ->  true
+    hasCycle(head: ListNode | null): boolean {
+        let slow = head; // 1歩ずつ
+        let fast = head; // 2歩ずつ
+
+        // fast が2歩進めるときだけ回す。fast.next を確かめないと fast.next.next で落ちる
+        while (fast && fast.next) {
+            slow = slow!.next;
+            fast = fast.next.next;
+
+            // 値ではなく「同じノードか」を比べる。値は別ノードでも重なりうる
+            if (slow === fast) return true;
+        }
+
+        // fast が末尾（null）に着いた = 行き止まりがある = 循環なし
+        return false;
+    }
+}
+```
+
+#### なぜ `while (fast && fast.next)` なのか
+
+`fast.next.next` を読むには、**`fast` と `fast.next` の両方が `null` でない**必要がある。`while (fast)` だけだと、奇数個のリストで落ちる。
+
+```
+[1]  fast.next が null  ->  null.next を読んで TypeError
+```
+
+#### なぜ `slow!` の `!` が要るのか
+
+`strict` では必須。消すと `'slow' is possibly 'null'.` になる。「fast が無事なら slow も無事」という**2変数の関係を TypeScript は推論しない**ので、`!` で伝える。
+
+#### なぜ必ず出会うのか
+
+循環があると、2人とも輪に入ったきり出られない。輪の上では **fast が slow を後ろから追いかける**形になる（トラックの周回遅れと同じ）。
+
+そこで「**fast から矢印の向きに何歩で slow に着くか**」を距離と呼ぶ。1手ごとに
+
+- slow が1歩逃げる → 距離 +1
+- fast が2歩詰める → 距離 −2
+
+差し引き **−1**。距離は毎回ちょうど1だけ縮む。
+
+```
+1 → 2 → 3 → 4
+    ↑       │
+    └───────┘
+
+      slow  fast  距離
+開始   1     1    -   （slow はまだ輪の外）
+1手    2     3    2   （3 → 4 → 2）
+2手    3     2    1   （2 → 3）
+3手    4     4    0   -> 同じノード。true
+```
+
+1ずつ縮むので、距離は 2 → 1 → 0 と**全部の数を順に通り**、0 で必ず止まる。もし2ずつ縮むなら 1 → −1 と **0 をまたいで追い越す**ことがある。「1歩と2歩」の組み合わせが、ぴったり重なることを保証している。
+
+**応用**: 「戻ってくるか」「真ん中はどこか」のように**全体の長さが分からないまま構造を調べたい**ときは、速さの違う2つのポインタを走らせる。速度差が情報になるので、記録用のメモリが要らない。
+
+### 21. Reorder Linked List
+
 ```ts
 //
 ```
