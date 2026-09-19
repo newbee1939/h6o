@@ -1194,6 +1194,121 @@ class Solution {
 
 ### 21. Reorder Linked List
 
-```ts
-//
+https://neetcode.io/problems/reorder-linked-list/question?list=blind75
+
+`[0, 1, 2, 3, 4]` の並びを `[0, 4, 1, 3, 2]` に組み替える。**値は動かさず、ノードのつなぎ替えだけ**で行う。
+
+#### 何をやらされているのか
+
+「先頭 → 末尾 → 2番目 → 後ろから2番目 → …」と読むから複雑に見える。**半分に折って、前半と後半を交互に差し込む**と見ると1行で言える。
+
 ```
+前半  0 → 1 → 2
+後半  3 → 4        逆から使いたい  ->  4 → 3 にひっくり返す
+
+  0   1   2
+   ＼  ＼
+    4   3          交互に差し込む
+
+-> 0 → 4 → 1 → 3 → 2
+```
+
+問題は「末尾から辿る」を単方向リストができない点にある。前のノードへ戻る矢印がないからだ。**後半を反転してしまえば「後ろから」が「前から」に変わる**——これで解決する。
+
+やることは3つ。**すべて既出の問題**で、新しい道具は1つも要らない。
+
+| 手順 | 使う道具 |
+|---|---|
+| ① 中央を見つけて2本に切る | 20 の fast / slow |
+| ② 後半を反転する | 18 の矢印の付け替え |
+| ③ 交互につなぐ | 19 のマージ（比較の代わりに交互） |
+
+```ts
+class Solution {
+    // 例: [1, 2, 3, 4, 5]  ->  [1, 5, 2, 4, 3]
+    reorderList(head: ListNode | null): void {
+        if (!head) return;
+
+        // ① 中央を探す。fast は slow の倍進むので、fast が末尾に着くと slow は真ん中にいる。
+        //    fast を1つ先から始めると、前半と後半が同数に割れる（奇数なら前半が1つ多い）
+        let slow = head;
+        let fast = head.next;
+        while (fast && fast.next) {
+            slow = slow.next!;
+            fast = fast.next.next;
+        }
+        // 開始   slow=1 fast=2
+        // 1周目  slow=2 fast=4
+        // 2周目  slow=3 fast=null（4 の2つ先は無い）-> ここで終了
+        // slow は 3 で止まる。1,2,3 | 4,5 と分かれるので、3 がちょうど前半の末尾
+
+        // ② 後半を切り離して反転する（18 と同じ3行）。
+        //    slow は前半の末尾なので、その1つ先 slow.next がそのまま後半の先頭になる
+        let second = slow.next; // 3 の次 = 4。後半の先頭をここでつかむ
+        // つかんでから切る。逆にすると後半への入口が消えて辿れなくなる
+        slow.next = null; // 前半 1 → 2 → 3 | 後半 4 → 5 の2本になる
+        let prev: ListNode | null = null;
+        while (second) {
+            const next = second.next;
+
+            second.next = prev;
+
+            prev = second;
+            second = next;
+        }
+        // 反転が終わると prev = 5 → 4。前半は 1 → 2 → 3 のまま
+
+        // ③ 前半と、反転した後半を交互につなぐ。
+        //    ② で切ったのは slow(=3) の矢印だが、slow は head から続く鎖の途中のノード。
+        //    なので head から辿れるのも 1 → 2 → 3 までになっている（4, 5 へは行けない）
+        let first: ListNode | null = head;
+        second = prev;
+        while (first && second) {
+            // 上書きする前に、両方の「次」を退避する（18 と同じ罠）。
+            // 型注釈は省けない。first = next1 と互いを参照して推論が堂々巡りになる（TS7022）
+            const next1: ListNode | null = first.next;
+            const next2: ListNode | null = second.next;
+
+            first.next = second; // 前半のノードの後ろに、後半のノードを差し込む
+            second.next = next1; // その後ろに、前半の次のノードを戻す
+
+            first = next1;
+            second = next2;
+        }
+        // 1周目  first=1 second=5（退避 next1=2 next2=4）-> 1 → 5 → 2
+        // 2周目  first=2 second=4（退避 next1=3 next2=null）-> 2 → 4 → 3
+        // 3周目に入る前に second=null になり終了 -> 1 → 5 → 2 → 4 → 3
+    }
+}
+```
+
+3回なめるだけなので時間 O(n)、空間 O(1)。
+
+```
+① 中央  1 → 2 → 3 | 4 → 5     slow = 3（前半の末尾）、その次の 4 が後半の先頭 = second
+② 反転  1 → 2 → 3 | 5 → 4
+③ 交互  1 → 5 → 2 → 4 → 3     second が null になって終了
+```
+
+`fast` を1つ先から始めるのは、**偶数のときちょうど半分に割るため**。fast は slow の倍進むので、1歩先に出せば1歩早くゴールに着き、その分 slow も1つ手前で止まる。
+
+```
+偶数 [1, 2, 3, 4]  ここだけ差が出る
+
+fast = head       slow=1 fast=1 -> slow=2 fast=3 -> slow=3 fast=null
+                  1, 2, 3 | 4     3対1
+
+fast = head.next  slow=1 fast=2 -> slow=2 fast=4 -> 終了（4 の次が無い）
+                  1, 2 | 3, 4     2対2  <- ぴったり半分
+
+
+奇数 [1, 2, 3, 4, 5]  どちらで始めても同じ
+
+fast = head       slow=1 fast=1 -> slow=2 fast=3 -> slow=3 fast=5
+                  1, 2, 3 | 4, 5  3対2
+
+fast = head.next  slow=1 fast=2 -> slow=2 fast=4 -> slow=3 fast=null
+                  1, 2, 3 | 4, 5  3対2  <- 真ん中の 3 は前半に入る
+```
+
+**応用**: 「末尾から辿りたい」は反転して「先頭から」に変える。複雑な組み替えほど、**既に解いた問題の組み合わせ**に分解できないかをまず疑う。
