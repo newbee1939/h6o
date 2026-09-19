@@ -9,6 +9,7 @@ description: ""
 <!-- できればHardも解きたい -->
 <!-- それぞれのタイトルの下に、それぞれのアルゴリズムについて簡潔にまとめる -->
 <!-- ## Arrays & Hashingとかの下 -->
+<!-- TILの方に書いてもいいかも -->
 
 「データ構造」と「アルゴリズム」の学習のため、NeetCodeのBlind 75をTypeScriptで解いてみた。（Hard以外）
 
@@ -1312,3 +1313,9 @@ fast = head.next  slow=1 fast=2 -> slow=2 fast=4 -> slow=3 fast=null
 ```
 
 **応用**: 「末尾から辿りたい」は反転して「先頭から」に変える。複雑な組み替えほど、**既に解いた問題の組み合わせ**に分解できないかをまず疑う。
+
+## Trees
+
+### Invert Binary Tree
+
+//
