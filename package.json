@@ -5,9 +5,11 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
+    "diagrams": "node scripts/render-mermaid.mjs",
     "preview": "astro preview"
   },
   "dependencies": {
+    "@astrojs/markdown-satteri": "0.4.4",
     "astro": "^7.4.1"
   }
 }

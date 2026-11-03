@@ -34,7 +34,8 @@ src/
     [lang]/rss.xml.ts     フィード
   components/PostList.astro  一覧の <ul>。日英の一覧ページが共有する唯一の部品
   layouts/Base.astro      唯一のレイアウト。<style> と speculation rules はここに直書き
-astro.config.mjs          site + base（GitHub Pages のプロジェクトサイト）
+astro.config.mjs          site + base（GitHub Pages のプロジェクトサイト）、```mermaid を SVG に差し替えるプラグイン
+diagrams/<hash>.svg       Mermaid 図の描画結果。npm run diagrams（scripts/render-mermaid.mjs）が手元で生成し、コミットする
 .github/workflows/deploy.yml
 ```
 **作らないもの**: 上記以外のコンポーネント（一覧を日英で共有する `PostList.astro` だけが例外。それ以外はレイアウトとページに直書き）、CSS ファイル（レイアウトに直書き）、favicon・画像（配信しない）、テーマ設定・サイト設定 JSON（定数はレイアウトに直書き）、`public/`（配信する静的ファイルが無い）。
@@ -50,6 +51,7 @@ astro.config.mjs          site + base（GitHub Pages のプロジェクトサイ
 | ダークモード | **`prefers-color-scheme` のみ** | 切替ボタン | 切替の保存には JS と localStorage が要る。原則 1 に反する | 可逆 |
 | CI | **GitHub Actions** | ホスティング側の Git 連携ビルド | デプロイ前に速度チェックを挟みたい。ホスティング側のビルドだと合否判定を差し込めない | 可逆 |
 | キャッシュ | **ホスティングの既定に従う**（2026-08-27 変更） | `_headers` で `stale-while-revalidate` | GitHub Pages はレスポンスヘッダを設定できない。ヘッダを制御したくなったらホスティングごと移す | 可逆 |
+| Mermaid 図 | **手元で SVG 化してコミット → ビルド時にインライン化**（2026-11-03 決定） | ブラウザで mermaid.js / ビルド時に描画（rehype-mermaid） | mermaid.js は JS 配信で原則 1 に反する。ビルド時描画は CI に Chromium が要る。SVG はソースのハッシュ名で置き、無ければビルドを落とす（描き忘れたままコードブロックで公開されない） | 可逆 |
 | 遷移の先読み | **Speculation Rules（prerender）** | 何もしない / JS のルーター | 宣言的な JSON で、実行されるコードは無い。一覧 → 記事の遷移が体感 0ms になる。Firefox は非対応だが、未対応ブラウザは単に無視するだけで害が無い | 可逆 |
 
 ## データ

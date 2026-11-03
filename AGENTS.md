@@ -8,6 +8,7 @@
 |---|---|
 | ビルド | `npm run build`（出力は `dist/`） |
 | ローカル確認 | `npm run dev` |
+| Mermaid 図の SVG 生成 | `npm run diagrams`（記事に ```mermaid を足したら実行し、`diagrams/` もコミット） |
 | 速度チェック | `npm run check:budget` / `npm run check:lh` |
 | デプロイ | **main への push で GitHub Actions が自動実行**（GitHub Pages）。手動デプロイの手順は用意しない |
 

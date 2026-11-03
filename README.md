@@ -14,3 +14,4 @@ npm run dev                            # 出力された URL を開く
 - slug は英小文字・数字・ハイフンのみ。**一度公開した slug は変えない**（URL が変わる）
 - 本文の見出しは `##` から。`#` はページの `<h1>`（記事タイトル）が使う
 - 対訳は同じ slug で lang 違いを置くだけ（`./scripts/new-post.sh <slug> en`）
+- ` ```mermaid ` の図を足したり直したりしたら、push 前に `npm run diagrams` を実行して `diagrams/` もコミットする。忘れると CI のビルドが落ちてデプロイされない（手元の Chrome で SVG を作るので、CI では生成できない）
