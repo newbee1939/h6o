@@ -2,7 +2,7 @@
 title: Cloudflare MCP Server Portal × Tunnel × Cloud Run で社内 MCP 基盤を構築した話
 date: 2026-11-03
 lang: ja
-description:
+description: Cloudflare MCP Server Portal と Tunnel で、Cloud Run 上の MCP サーバーを認証付きの 1 つの URL から Claude に提供した構成と、ぶつかった壁をまとめました
 ---
 
 ## 概要
