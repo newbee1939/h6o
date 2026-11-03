@@ -34,8 +34,8 @@ src/
     [lang]/rss.xml.ts     フィード
   components/PostList.astro  一覧の <ul>。日英の一覧ページが共有する唯一の部品
   layouts/Base.astro      唯一のレイアウト。<style> と speculation rules はここに直書き
-astro.config.mjs          site + base（GitHub Pages のプロジェクトサイト）、```mermaid を SVG に差し替えるプラグイン
-diagrams/<hash>.svg       Mermaid 図の描画結果。npm run diagrams（scripts/render-mermaid.mjs）が手元で生成し、コミットする
+astro.config.mjs          site + base（GitHub Pages のプロジェクトサイト）
+diagrams/<hash>.svg       Mermaid 図の描画結果。npm run diagrams（scripts/render-mermaid.mjs）が手元で生成し、コミットする。差し替えは scripts/mermaid.mjs
 .github/workflows/deploy.yml
 ```
 **作らないもの**: 上記以外のコンポーネント（一覧を日英で共有する `PostList.astro` だけが例外。それ以外はレイアウトとページに直書き）、CSS ファイル（レイアウトに直書き）、favicon・画像（配信しない）、テーマ設定・サイト設定 JSON（定数はレイアウトに直書き）、`public/`（配信する静的ファイルが無い）。

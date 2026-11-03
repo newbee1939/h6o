@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { mermaidHash } from './mermaid-hash.mjs';
+import { mermaidHash } from './mermaid.mjs';
 
 const tmp = mkdtempSync(join(tmpdir(), 'mermaid-'));
 for (const file of readdirSync('posts').filter((f) => f.endsWith('.md'))) {
