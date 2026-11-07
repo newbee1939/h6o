@@ -1,11 +1,15 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
+import { satteri } from '@astrojs/markdown-satteri';
+import { mermaidPlugin } from './scripts/mermaid.mjs';
 
 export default defineConfig({
   // GitHub Pages のプロジェクトサイトは https://<user>.github.io/<repo>/ で配信される。
   // 独自ドメインに移すときはこの 2 行だけ直す。
   site: 'https://newbee1939.github.io',
   base: '/h6o',
+
+  markdown: { processor: satteri({ mdastPlugins: [mermaidPlugin] }) },
 
   build: {
     // inlineStylesheets の既定は 'auto'（4KB 未満だけインライン）。
