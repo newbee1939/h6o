@@ -43,6 +43,7 @@ https://tamachi-sre.connpass.com/event/408227/
 1. 内容の深掘りのためブログ記事を執筆
     - https://newbee1939.github.io/h6o/ja/cloudflare-mcp-portal/
 2. Marpで資料作成
+    - https://speakerdeck.com/h6o/2026-11-11-tamachi-sre
 3. 何度も声に出して練習
 
 資料作りで意識したことは、「情報を詰め込まない」ことです。
