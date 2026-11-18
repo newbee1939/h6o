@@ -7,7 +7,7 @@ description: OSS の AI ペンテスター Shannon を、GCE VM 1 台と GitHub 
 
 ## 概要
 
-OSS の AI ペンテスター [Shannon](https://github.com/KeygraphHQ/shannon) を、ステージング環境に対して定期実行する基盤を Google Cloud 上に作りました。設計から実装まで一人で担当し、Go・Terraform・GitHub Actions で構築しています。
+OSS の AI ペンテスター [Shannon](https://github.com/KeygraphHQ/shannon) を、検証環境に対して定期実行する基盤を Google Cloud 上に作りました。設計から実装まで一人で担当し、Go・Terraform・GitHub Actions で構築しています。
 
 当初は Cloud Run Jobs で作るつもりでした。ただ、Shannon は実行中に自分でコンテナを立てるため、特権コンテナが必要です。Cloud Run はこれに対応していません。
 
@@ -40,17 +40,16 @@ AI によって攻撃する側が速く・安くなっているなら、守る�
 | 候補 | 外した理由 |
 | -- | -- |
 | Cloud Run | 特権コンテナに非対応 |
-| GKE Autopilot | 特権 Pod を使うには組織ポリシーの変更が必要 |
-| GKE Standard | ノードは結局 VM なので、運用の手間が減らない |
-| Cloud Build Private Pools | Docker-in-Docker の扱いが公式に明記されていない |
+| GKE Autopilot | 特権 Pod を使うには組織ポリシーの変更が必要 + 会社としてGKEの運用をCloud Runに載せ替えた背景 |
+| GKE Standard | ノードは結局 VM なので、運用の手間が減らない + 会社としてGKEの運用をCloud Runに載せ替えた背景 |
 | GitHub-hosted runner | 送信元 IP を固定できない（対象の WAF は IP の許可リスト方式） |
 | ベンダーの SaaS 版 | ソースコードと攻撃結果が社外を通る |
 
-残ったのは GCE VM でした。社内には「VM はできるだけ避ける」という方針があったので、常時起動はせず、起動と停止だけを行う形にして運用の負担を減らしています。
+残ったのは GCE VM でした。
 
 ### GitHub Actions で動かす
 
-決め手になったのは、Shannon の公式 GitHub Action（`shannon-action`）があったことです。
+決め手になったのは、Shannon の公式 GitHub Action（[shannon-action](https://github.com/KeygraphHQ/shannon-action)）があったことです。
 
 「GitHub Actions を使う」というと、GitHub のマシンで動くイメージがあるかもしれません。ですが、`runs-on` で自前の VM（self-hosted runner）を指定すれば、実行場所は自分で選べます。
 
