@@ -66,11 +66,11 @@ GitHub Actions を選んだ理由は 2 つです。
 self-hosted runner を GitHub に登録する方法は 2 つあり、違いは「誰が登録するか」だけです。
 
 ```
-registration token: 管理役がトークンを取る → runner が自分で登録する
-JIT config        : 管理役が登録まで済ませる → runner は起動するだけ
+registration token 方式: 管理役が registration token（登録専用のトークン）を取る → runner がそれで自分を登録する
+JIT config 方式        : 管理役が登録まで済ませる                             → runner は起動するだけ
 ```
 
-今回は dispatcher が管理役です。GitHub App の秘密鍵で JWT を作り、installation access token に交換し、それで [`generate-jitconfig`](https://docs.github.com/en/rest/actions/self-hosted-runners#create-configuration-for-a-just-in-time-runner-for-an-organization) を叩くと、その時点で登録が済んだ認証情報が返ります。VM はそれを `run.sh --jitconfig` に渡すだけで、1 ジョブ終わると自動で登録解除されます。
+今回は dispatcher が管理役です。GitHub App の秘密鍵で JWT を作り、installation access token に交換し、それで `generate-jitconfig` を叩くと、その時点で登録が済んだ認証情報が返ります。VM はそれを `run.sh --jitconfig` に渡すだけで、1 ジョブ終わると自動で登録解除されます。
 
 JIT config を選んだのは、VM に「runner を登録できる鍵」を渡さずに済み、前のジョブの状態も残らないからです。
 
