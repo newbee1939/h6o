@@ -121,6 +121,7 @@ sequenceDiagram
   rect rgba(128, 128, 128, 0.08)
     Note over S,G: A. 起動の依頼
     S->>D: POST /dispatch（Scheduler の ID トークン）
+    Note over S,D: ID トークン = Google が署名した身分証。<br>dispatcher は「誰か」をこれで知り、許可した相手だけ通す
     D->>V: VM を起動（instances.start）
     activate V
     D->>D: App の秘密鍵で JWT を作る
@@ -161,6 +162,7 @@ sequenceDiagram
   rect rgba(128, 128, 128, 0.08)
     Note over S,G: E. 停止
     S->>D: POST /reap（Scheduler の ID トークン、毎時）
+    Note over S,D: ingress は「どこから」、ID トークンは「誰が」を確かめる
     D->>G: runner の状態と待ちのジョブを確認
     D->>V: どちらもなく、起動から 30 分以上なら停止（instances.stop）
     deactivate V
