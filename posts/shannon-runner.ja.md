@@ -122,37 +122,40 @@ sequenceDiagram
     Note over S,G: A. 起動の依頼
     S->>D: POST /dispatch（Scheduler の ID トークン）
     D->>V: VM を起動（instances.start）
+    activate V
     D->>D: App の秘密鍵で JWT を作る
     D->>G: JWT を installation access token に交換
     D->>G: ワークフローを起動（workflow_dispatch）
-    Note over G: ジョブは runner が来るまで待つ
+    Note over D,G: VM の起動完了は待たない。<br>ジョブは runner が来るまで GitHub 側で待つ
   end
 
   rect rgba(128, 128, 128, 0.15)
-    Note over D,V: B. VM の準備
+    Note over D,V: B. VM の準備（起動のたびに startup-script が走る）
     V->>V: メタデータサーバーから VM の ID トークンを取得
     V->>D: GET /setup（VM の ID トークン）
     D-->>V: setup.sh（パッチ適用、Docker・runner の導入）
   end
 
-  rect rgba(128, 128, 128, 0.08)
-    Note over D,G: C. runner の登録
-    V->>D: POST /runner-token（VM の ID トークン）
-    D->>G: JIT config を発行
-    D-->>V: JIT config
-    V->>G: run.sh --jitconfig で起動し、ジョブを 1 件受け取る
-  end
+  loop VM が止まるまで（systemd が C → D を繰り返す）
+    rect rgba(128, 128, 128, 0.08)
+      Note over D,G: C. runner の登録
+      V->>D: POST /runner-token（VM の ID トークン）
+      D->>G: JIT config を発行
+      D-->>V: JIT config（1 ジョブ限り）
+      V->>G: run.sh --jitconfig で起動し、ジョブを 1 件受け取る
+    end
 
-  rect rgba(128, 128, 128, 0.15)
-    Note over D,T: D. スキャン
-    V->>D: GET /target-token?repo=...（VM の ID トークン）
-    D->>G: 別の App で対象 1 件に絞ったトークンを発行
-    D-->>V: 対象用トークン ＋ 攻撃先の URL
-    V->>G: 対象用トークンで対象リポジトリを clone
-    V->>T: Shannon で攻撃（数時間）
-    V->>G: レポートを run の成果物として保存
-    V->>SL: 結果を通知
-    Note over V,G: ジョブが終わると runner の登録は消える。<br>systemd が C からやり直し、次のジョブを待つ
+    rect rgba(128, 128, 128, 0.15)
+      Note over D,T: D. スキャン
+      V->>D: GET /target-token?repo=...（VM の ID トークン）
+      D->>G: 別の App で対象 1 件に絞ったトークンを発行
+      D-->>V: 対象用トークン ＋ 攻撃先の URL
+      V->>G: 対象用トークンで対象リポジトリを clone
+      V->>T: Shannon で攻撃（数時間）
+      V->>G: レポートを run の成果物として保存
+      V->>SL: 結果を通知
+      Note over V,G: ジョブが終わると runner の登録は消える
+    end
   end
 
   rect rgba(128, 128, 128, 0.08)
@@ -160,6 +163,7 @@ sequenceDiagram
     S->>D: POST /reap（Scheduler の ID トークン、毎時）
     D->>G: runner の状態と待ちのジョブを確認
     D->>V: どちらもなく、起動から 30 分以上なら停止（instances.stop）
+    deactivate V
   end
 ```
 
@@ -180,6 +184,49 @@ sequenceDiagram
 VM は攻撃対象と直接やり取りするので、システムの中でいちばん乗っ取られやすい場所です。
 
 そこで、VM のサービスアカウントには、GitHub App の秘密鍵を読む権限をあえて与えていません。仮に VM が乗っ取られても、Google Cloud の IAM がサーバー側で読み取りを拒否します。
+
+VM と dispatcher の間でやり取りするトークンを並べると、次のようになります。
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant M as メタデータサーバー
+  participant V as VM
+  participant D as dispatcher
+  participant SM as Secret Manager
+  participant G as GitHub
+
+  rect rgba(128, 128, 128, 0.08)
+    Note over M,D: VM の身分証明
+    V->>M: ID トークンを要求
+    M-->>V: ID トークン（Google が署名、有効 1 時間）
+  end
+
+  rect rgba(128, 128, 128, 0.15)
+    Note over V,G: runner 用（runner 用 App）
+    V->>D: POST /runner-token（ID トークン）
+    D->>SM: runner 用 App の秘密鍵を読む
+    D->>D: JWT を作る（有効 10 分、App であることの証明だけ）
+    D->>G: JWT を提示
+    G-->>D: installation access token（有効 1 時間、API を呼べる）
+    D->>G: installation access token で JIT config を要求
+    G-->>D: JIT config（1 回限り）
+    D-->>V: JIT config
+    V->>G: run.sh --jitconfig で runner を起動（1 ジョブで登録解除）
+  end
+
+  rect rgba(128, 128, 128, 0.08)
+    Note over V,G: 対象リポジトリ用（対象用 App）
+    V->>D: GET /target-token?repo=...（ID トークン）
+    D->>D: repo が targets.yaml にあるか確認
+    D->>SM: 対象用 App の秘密鍵を読む
+    D->>G: JWT を提示し、repositories と permissions を絞って要求
+    G-->>D: 対象用トークン（対象 1 件だけ、有効 1 時間）
+    D-->>V: 対象用トークン ＋ 攻撃先の URL
+  end
+
+  Note over V,SM: 秘密鍵・JWT・runner 用の installation access token は VM に渡らない
+```
 
 VM が手にできる GitHub の鍵は、JIT config と対象用トークンだけです。対象用トークンは[発行時に `repositories` と `permissions` を指定](https://docs.github.com/en/rest/apps/apps#create-an-installation-access-token-for-an-app)して「このリポジトリだけ、読み取りと結果の送信だけ」に絞っています。JIT config は 1 ジョブ、対象用トークンは 1 時間で使えなくなります。VM の中に、長く使える GitHub の鍵は残りません。
 
