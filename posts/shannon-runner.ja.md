@@ -155,7 +155,7 @@ sequenceDiagram
 
 **A. 起動の依頼（1〜5）**：dispatcher は VM を起動したら、起動の完了は待たずにすぐワークフローを起動します。ジョブは GitHub 側で runner が来るまで待ってくれるからです。トリガーを dispatcher の 1 か所に集めたので、「VM の起動」と「ワークフローの起動」の時刻がずれる事故は起きません。
 
-**B. VM の準備（6〜8）**：VM は鍵を持たなくても、メタデータサーバー（`metadata.google.internal`）に HTTP で頼むだけで、Google が署名した ID トークンを受け取れます。startup-script はそれを付けて dispatcher から setup.sh を受け取り、実行するだけです。setup.sh は dispatcher のイメージに埋め込んであるので、main にマージすれば次の起動から反映されます。
+**B. VM の準備（6〜8）**：VM はサービスアカウントキー（秘密鍵の入った JSON ファイル）を持たなくても、メタデータサーバー（`metadata.google.internal`）に HTTP で頼むだけで、Google が署名した ID トークンを受け取れます。メタデータサーバーへのリクエストは [VM が載っている物理ホストの外に出ない](https://cloud.google.com/compute/docs/metadata/overview)ので、身元は鍵ではなく基盤が保証してくれます。startup-script はそれを付けて dispatcher から setup.sh を受け取り、実行するだけです。setup.sh は dispatcher のイメージに埋め込んであるので、main にマージすれば次の起動から反映されます。
 
 **C. runner の登録（9〜12）**：systemd のサービスが dispatcher に JIT config を頼み、runner を起動します。
 
