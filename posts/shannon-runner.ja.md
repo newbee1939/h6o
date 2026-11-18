@@ -49,17 +49,17 @@ AI によって攻撃する側が速く・安くなっているなら、守る�
 
 ### GitHub Actions で動かす
 
-決め手になったのは、Shannon の公式 GitHub Action（[shannon-action](https://github.com/KeygraphHQ/shannon-action)）があったことです。
+GitHub Actions を選んだ理由は 2 つです。
+
+- 公式の Action がある：Shannon には公式の GitHub Action（[shannon-action](https://github.com/KeygraphHQ/shannon-action)）がある
+- キューを GitHub に任せられる：GitHub は、空いている runner にジョブを 1 件ずつ割り当て、runner が見つからないジョブも[最大 24 時間待ってくれる](https://docs.github.com/en/actions/reference/limits)。Pub/Sub とワーカーを自作せずに済む
 
 「GitHub Actions を使う」というと、GitHub のマシンで動くイメージがあるかもしれません。ですが、`runs-on` で自前の VM（self-hosted runner）を指定すれば、実行場所は自分で選べます。
 
-今回は、GitHub のマシン（GitHub-hosted runner）ではなく self-hosted runner を選びました。理由は次の 3 つです。
+今回は、GitHub のマシン（GitHub-hosted runner）ではなく self-hosted runner を選びました。理由は次の 2 つです。
 
 - 送信元 IP を固定できる：GitHub のマシンは IP が毎回変わるので、対象の前段にある WAF の許可リストに登録できない。自前の VM なら、Cloud NAT の固定 IP から攻撃できる
 - 長時間のスキャンに耐えられる：GitHub のマシンでは、1 ジョブは[最大 6 時間](https://docs.github.com/en/actions/reference/limits)まで。スキャンは数時間かかるので余裕がない
-- 秘密情報を GitHub に置かずに済む：VM は自分のサービスアカウントで Google Cloud に認証できる。API キーなどは Secret Manager から直接読めるので、GitHub の Secrets に登録しなくてよい
-
-これには、もう 1 つ大きな利点がありました。GitHub は、空いている runner にジョブを 1 件ずつ割り当て、runner が見つからないジョブも[最大 24 時間待ってくれます](https://docs.github.com/en/actions/reference/limits)。つまり、キューを GitHub が肩代わりしてくれるということです。Pub/Sub とワーカーを自作せずに済みました。
 
 ### JIT runner で 1 ジョブずつ使い捨てる
 
