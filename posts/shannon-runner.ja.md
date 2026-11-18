@@ -13,8 +13,6 @@ OSS の AI ペンテスター [Shannon](https://github.com/KeygraphHQ/shannon) �
 
 最終的に、GCE VM 1 台を起動・停止するだけの構成にし、その VM を GitHub Actions の self-hosted runner として使っています。ジョブのキュー管理は GitHub に任せているので、キューの仕組みを自作せずに済みました。
 
-この記事では、この構成に至った経緯と仕組み、ぶつかった壁について書いていきます。
-
 ## 背景
 
 ペネトレーションテスト（実際に攻撃して穴を探す診断）は、「年 1 回、外部に依頼する」のが一般的です。その間にも、コードは何百回も変わります。
@@ -75,9 +73,22 @@ AI によって攻撃する側が速く・安くなっているなら、守る�
 
 これには、もう 1 つ大きな利点がありました。GitHub は、空いている runner にジョブを 1 件ずつ割り当て、runner が見つからないジョブも[最大 24 時間待ってくれます](https://docs.github.com/en/actions/reference/limits)。つまり、キューを GitHub が肩代わりしてくれるということです。Pub/Sub とワーカーを自作せずに済みました。
 
+### JIT runner で 1 ジョブずつ使い捨てる
+
+self-hosted runner を GitHub に登録する方法は 2 つあり、違いは「誰が登録するか」だけです。
+
+```
+registration token: 管理役がトークンを取る → runner が自分で登録する
+JIT config        : 管理役が登録まで済ませる → runner は起動するだけ
+```
+
+今回は dispatcher が管理役です。GitHub App の秘密鍵で JWT を作り、installation access token に交換し、それで [`generate-jitconfig`](https://docs.github.com/en/rest/actions/self-hosted-runners#create-configuration-for-a-just-in-time-runner-for-an-organization) を叩くと、その時点で登録が済んだ認証情報が返ります。VM はそれを `run.sh --jitconfig` に渡すだけで、1 ジョブ終わると自動で登録解除されます。
+
+JIT config を選んだのは、VM に「runner を登録できる鍵」を渡さずに済み、前のジョブの状態も残らないからです。
+
 ### ARC の考え方を小さく借りる
 
-この「ジョブが来たら runner を用意し、JIT で 1 ジョブだけ登録して、終わったら消す」という形は、GitHub 公式の [ARC（Actions Runner Controller）](https://docs.github.com/en/actions/concepts/runners/actions-runner-controller)と同じ考え方です。ARC は Kubernetes 上で、ジョブ数に応じて使い捨ての runner Pod を増減させる仕組みです。
+この「ジョブが来たら runner を用意し、1 ジョブ終わったら消す」という形は、GitHub 公式の [ARC（Actions Runner Controller）](https://docs.github.com/en/actions/concepts/runners/actions-runner-controller)と同じ考え方です。ARC は Kubernetes 上で、ジョブ数に応じて使い捨ての runner Pod を増減させる仕組みです。
 
 | ARC | 今回 |
 | -- | -- |
@@ -93,91 +104,9 @@ ARC そのものを使わなかったのは、Kubernetes が前提だからで�
 
 ## アーキテクチャ
 
-### 全体図
-
-```mermaid
-flowchart LR
-  subgraph GC["Google Cloud"]
-    SCH["Cloud Scheduler<br>月 3 回 / 毎時の見回り"]
-    D["dispatcher（司令塔）<br>Cloud Run"]
-    SM[("Secret Manager<br>GitHub App の秘密鍵")]
-    SM2[("Secret Manager<br>LLM の API キー / Slack webhook")]
-    VM["GCE VM<br>self-hosted runner<br>外部 IP なし"]
-    NAT["Cloud NAT<br>固定 IP"]
-  end
-  GH["GitHub Actions"]
-  T["対象アプリ（STG）"]
-  SL["Slack"]
-
-  SCH --> D
-  D -- "起動・停止" --> VM
-  D -- "ワークフロー起動" --> GH
-  D -. "dispatcher だけが読める" .-> SM
-  VM -- "トークンを要求" --> D
-  GH -- "ジョブを割り当て" --> VM
-  VM -. "VM だけが読める" .-> SM2
-  VM --> NAT --> T
-  VM -- "結果を通知" --> SL
-```
-
-| 登場人物 | 役割 |
-| -- | -- |
-| dispatcher | Go で書いた司令塔。VM の起動・停止、ワークフローの起動、トークンの発行を受け持つ |
-| VM | 実際に攻撃する場所。外部 IP も SSH の経路もない。外向きの通信は Cloud NAT の固定 IP から出る |
-| GitHub Actions | 「いつ、どの runner に、どのジョブをやらせるか」を管理する |
-
-### 登場するトークン
-
-処理の流れを追う前に、登場するトークンを整理しておきます。この構成では、「トークン」と呼べるものが 7 種類も出てきます。
-
-| # | 名前 | 発行元 | 持つ人 | 何に使うか | 有効期限 |
-| -- | -- | -- | -- | -- | -- |
-| ① | Google の ID トークン（Scheduler 用） | Google | Cloud Scheduler | dispatcher に「自分は Scheduler だ」と証明する | 1 時間 |
-| ② | Google の ID トークン（VM 用） | VM のメタデータサーバー | VM | dispatcher に「自分は VM だ」と証明する | 1 時間 |
-| ③ | GitHub App の秘密鍵 | GitHub（App の設定画面で発行） | dispatcher だけ | ④ に署名する | 無期限 |
-| ④ | GitHub App の JWT | dispatcher が自分で作る | dispatcher | GitHub に「自分は App X だ」と名乗る | 10 分 |
-| ⑤ | installation access token（App の全権限） | GitHub | dispatcher | ワークフロー起動、⑥ の発行、runner の状態確認 | 1 時間 |
-| ⑥ | JIT 設定 | GitHub | VM | runner を 1 回だけ登録する | 1 ジョブ |
-| ⑦ | installation access token（対象 1 件に絞ったもの） | GitHub | VM | 対象リポジトリの clone と結果の送信 | 1 時間 |
-
-大きく分けると、①② は「dispatcher を呼ぶための身分証」、③〜⑦ は「GitHub を操作するための鍵」です。
-
-#### ①② Google の ID トークン
-
-ID トークンは、Google が署名した JWT（署名付きの JSON）です。中には「どのサービスアカウントか（`sub`）」と「誰に宛てたものか（`aud`）」が入っています。
-
-dispatcher は受け取った ID トークンを、次の 3 点で確かめます。
-
-1. Google の公開鍵で署名を検証する（偽造されていないか）
-2. `aud` が dispatcher の URL か（他のサービス宛てのトークンを使い回していないか）
-3. `sub` が許可したサービスアカウントか（Scheduler 用のエンドポイントは Scheduler だけ、VM 用は VM だけ）
-
-VM はパスワードも鍵も持たずに ② を手に入れられます。VM の中から `metadata.google.internal` というアドレスに HTTP でリクエストするだけで、Google が「この VM のサービスアカウント」として署名した ID トークンを返してくれるからです。
-
-#### ③〜⑤ GitHub App の秘密鍵からトークンを作る
-
-GitHub App は、人ではなく自動化のための「身元」です。GitHub App として API を呼ぶには、3 段階の交換が必要です。
-
-```
-③ 秘密鍵        印鑑のようなもの。これ自体は GitHub に送らない
-  ↓ 署名する
-④ JWT           「App X です」という印鑑付きの名乗り。これだけでは API はほとんど呼べない
-  ↓ GitHub に提示して交換する
-⑤ installation access token   App の権限をすべて使える合鍵。1 時間で失効する
-```
-
-③ は期限がなく、漏れたら App になりすまし放題です。そのため、③ を読めるのは dispatcher だけにしています。
-
-#### ⑥⑦ VM に渡す弱い鍵
-
-⑤ は App の権限をすべて使えるので、VM には渡しません。dispatcher が ⑤ を使って、用途を絞った弱い鍵を作り、それだけを VM に渡します。
-
-- ⑥ [JIT 設定](https://docs.github.com/en/rest/actions/self-hosted-runners#create-configuration-for-a-just-in-time-runner-for-an-organization)：runner を 1 回だけ登録できる使い捨ての設定です。ジョブが 1 件終わると、GitHub 側で runner の登録ごと消えます
-- ⑦ 対象 1 件に絞った installation access token：⑤ と同じ種類のトークンですが、[発行時に `repositories` と `permissions` を指定](https://docs.github.com/en/rest/apps/apps#create-an-installation-access-token-for-an-app)して、「このリポジトリだけ、読み取りと結果の送信だけ」に絞っています
+Cloud Run 上に Go で書いた司令塔（dispatcher）を置き、VM の起動・停止、ワークフローの起動、トークンの発行を受け持たせています。VM は外部 IP を持たず、Cloud NAT の固定 IP から攻撃します。
 
 ### 1 回のスキャンの流れ
-
-では、Scheduler が dispatcher を呼んでから VM が止まるまでを、トークンの動きと合わせて追っていきます。
 
 ```mermaid
 sequenceDiagram
@@ -191,35 +120,35 @@ sequenceDiagram
 
   rect rgba(128, 128, 128, 0.08)
     Note over S,G: A. 起動の依頼
-    S->>D: POST /dispatch（① Scheduler の ID トークン）
+    S->>D: POST /dispatch（Scheduler の ID トークン）
     D->>V: VM を起動（instances.start）
-    D->>D: ③ 秘密鍵で ④ JWT を作る
-    D->>G: ④ JWT を ⑤ installation access token に交換
-    D->>G: ⑤ でワークフローを起動（workflow_dispatch）
+    D->>D: App の秘密鍵で JWT を作る
+    D->>G: JWT を installation access token に交換
+    D->>G: ワークフローを起動（workflow_dispatch）
     Note over G: ジョブは runner が来るまで待つ
   end
 
   rect rgba(128, 128, 128, 0.15)
     Note over D,V: B. VM の準備
-    V->>V: メタデータサーバーから ② VM の ID トークンを取得
-    V->>D: GET /setup（②）
+    V->>V: メタデータサーバーから VM の ID トークンを取得
+    V->>D: GET /setup（VM の ID トークン）
     D-->>V: setup.sh（パッチ適用、Docker・runner の導入）
   end
 
   rect rgba(128, 128, 128, 0.08)
     Note over D,G: C. runner の登録
-    V->>D: POST /runner-token（②）
-    D->>G: ⑤ で JIT 設定を発行
-    D-->>V: ⑥ JIT 設定
-    V->>G: ⑥ で runner として登録し、ジョブを 1 件受け取る
+    V->>D: POST /runner-token（VM の ID トークン）
+    D->>G: JIT config を発行
+    D-->>V: JIT config
+    V->>G: run.sh --jitconfig で起動し、ジョブを 1 件受け取る
   end
 
   rect rgba(128, 128, 128, 0.15)
     Note over D,T: D. スキャン
-    V->>D: GET /target-token?repo=...（②）
-    D->>G: 別の App の ④ JWT で ⑦ 対象 1 件のトークンを発行
-    D-->>V: ⑦ ＋ 攻撃先の URL
-    V->>G: ⑦ で対象リポジトリを clone
+    V->>D: GET /target-token?repo=...（VM の ID トークン）
+    D->>G: 別の App で対象 1 件に絞ったトークンを発行
+    D-->>V: 対象用トークン ＋ 攻撃先の URL
+    V->>G: 対象用トークンで対象リポジトリを clone
     V->>T: Shannon で攻撃（数時間）
     V->>G: レポートを run の成果物として保存
     V->>SL: 結果を通知
@@ -228,27 +157,21 @@ sequenceDiagram
 
   rect rgba(128, 128, 128, 0.08)
     Note over S,G: E. 停止
-    S->>D: POST /reap（① 毎時）
-    D->>G: ⑤ で runner の状態と待ちのジョブを確認
+    S->>D: POST /reap（Scheduler の ID トークン、毎時）
+    D->>G: runner の状態と待ちのジョブを確認
     D->>V: どちらもなく、起動から 30 分以上なら停止（instances.stop）
   end
 ```
 
-**A. 起動の依頼（1〜5）**：Scheduler が ① を付けて dispatcher を呼びます。dispatcher は VM を起動したら、起動の完了は待たずにすぐワークフローを起動します。ジョブは GitHub 側で runner が来るまで待ってくれるからです。
+**A. 起動の依頼（1〜5）**：dispatcher は VM を起動したら、起動の完了は待たずにすぐワークフローを起動します。ジョブは GitHub 側で runner が来るまで待ってくれるからです。トリガーを dispatcher の 1 か所に集めたので、「VM の起動」と「ワークフローの起動」の時刻がずれる事故は起きません。VM の起動 API は起動中の VM に呼んでも[エラーにならない](https://cloud.google.com/compute/docs/reference/rest/v1/instances/start)ので、依頼が重なっても問題ありません。
 
-ここでトリガーを dispatcher の 1 か所に集めたのがポイントです。「VM を起動するスケジュール」と「ワークフローを起動するスケジュール」を別々にすると、時刻のずれで事故が起きます。また、VM の起動 API は起動中の VM に呼んでも[エラーにならない](https://cloud.google.com/compute/docs/reference/rest/v1/instances/start)ので、依頼が重なっても問題ありません。
+**B. VM の準備（6〜8）**：VM は鍵を持たなくても、メタデータサーバー（`metadata.google.internal`）に HTTP で頼むだけで、Google が署名した ID トークンを受け取れます。startup-script はそれを付けて dispatcher から setup.sh を受け取り、実行するだけです。setup.sh は dispatcher のイメージに埋め込んであるので、main にマージすれば次の起動から反映されます。
 
-**B. VM の準備（6〜8）**：VM は起動するたびに startup-script を実行します。startup-script は「② を付けて dispatcher から setup.sh を受け取り、実行する」だけの数行です。setup.sh の中身は dispatcher のイメージに埋め込んであるので、main にマージすれば次の起動から反映されます。
+**C. runner の登録（9〜12）**：systemd のサービスが dispatcher に JIT config を頼み、runner を起動します。
 
-**C. runner の登録（9〜12）**：setup.sh が立てた systemd のサービスが、② を付けて dispatcher に ⑥ を頼みます。VM は ⑥ を使って runner を起動し、GitHub で待っていたジョブを 1 件受け取ります。
+**D. スキャン（13〜19）**：dispatcher は、リポジトリ名がレビュー済みの対象一覧（`targets.yaml`）にあるときだけ対象用トークンを発行し、攻撃先の URL も一緒に返します。ジョブが終わると runner の登録は消え、systemd が C からやり直すので、待っているジョブはまっさらな runner で順番に処理されます。
 
-**D. スキャン（13〜19）**：ジョブの最初のステップで、② を付けて dispatcher に ⑦ を頼みます。dispatcher は、リポジトリ名がレビュー済みの対象一覧（`targets.yaml`）にあるときだけ ⑦ を発行し、攻撃先の URL も一緒に返します。VM は ⑦ で対象を clone し、Shannon で攻撃します。
-
-ジョブが終わると、⑥ で登録した runner は GitHub 側で消えます。systemd が C からやり直すので、待っているジョブがあれば、まっさらな runner で次のジョブを順番に処理できます。
-
-**E. 停止（20〜22）**：Scheduler が毎時 ① を付けて見回りを頼みます。dispatcher は ⑤ で runner と待ちのジョブを確認し、仕事がなければ VM を止めます。
-
-なお、Shannon が使う LLM の API キーだけは、VM が自分のサービスアカウントで Secret Manager から直接読んでいます。攻撃そのものに必要なので、VM から外すことはできません。
+**E. 停止（20〜22）**：dispatcher が毎時、runner と待ちのジョブを確認し、仕事がなければ VM を止めます。
 
 ## 設計で考えたこと
 
@@ -256,9 +179,9 @@ sequenceDiagram
 
 VM は攻撃対象と直接やり取りするので、システムの中でいちばん乗っ取られやすい場所です。
 
-そこで、VM のサービスアカウントには、GitHub App の秘密鍵（③）を読む権限をあえて与えていません。仮に VM が乗っ取られても、Google Cloud の IAM がサーバー側で読み取りを拒否します。
+そこで、VM のサービスアカウントには、GitHub App の秘密鍵を読む権限をあえて与えていません。仮に VM が乗っ取られても、Google Cloud の IAM がサーバー側で読み取りを拒否します。
 
-VM が手にできる GitHub の鍵は、⑥ JIT 設定と ⑦ 対象 1 件に絞ったトークンだけです。どちらも用途が狭く、⑥ は 1 ジョブ、⑦ は 1 時間で使えなくなります。VM の中に、長く使える GitHub の鍵は残りません。
+VM が手にできる GitHub の鍵は、JIT config と対象用トークンだけです。対象用トークンは[発行時に `repositories` と `permissions` を指定](https://docs.github.com/en/rest/apps/apps#create-an-installation-access-token-for-an-app)して「このリポジトリだけ、読み取りと結果の送信だけ」に絞っています。JIT config は 1 ジョブ、対象用トークンは 1 時間で使えなくなります。VM の中に、長く使える GitHub の鍵は残りません。
 
 GitHub App も、用途ごとに 2 つに分けました。App の権限はインストール先すべてにかかるので、runner を登録できる App を対象側の Org に入れると、その Org 全体の runner を操作できてしまいます。悪用されれば、偽の runner で他のリポジトリのジョブを横取りされかねません。
 
