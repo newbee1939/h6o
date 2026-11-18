@@ -75,6 +75,18 @@ AI によって攻撃する側が速く・安くなっているなら、守る�
 
 これには、もう 1 つ大きな利点がありました。GitHub は、空いている runner にジョブを 1 件ずつ割り当て、runner が見つからないジョブも[最大 24 時間待ってくれます](https://docs.github.com/en/actions/reference/limits)。つまり、キューを GitHub が肩代わりしてくれるということです。Pub/Sub とワーカーを自作せずに済みました。
 
+### ARC の考え方を小さく借りる
+
+この「ジョブが来たら runner を用意し、JIT で 1 ジョブだけ登録して、終わったら消す」という形は、GitHub 公式の [ARC（Actions Runner Controller）](https://docs.github.com/en/actions/concepts/runners/actions-runner-controller)と同じ考え方です。ARC は Kubernetes 上で、ジョブ数に応じて使い捨ての runner Pod を増減させる仕組みです。
+
+| ARC | 今回 |
+| -- | -- |
+| listener がジョブを待ち受け、runner の数を決める | dispatcher が VM を起動し、毎時の見回りで止める |
+| controller が JIT 設定を取得して runner Pod を作る | dispatcher が JIT 設定を発行し、VM がそれで runner を立てる |
+| ジョブが終わると runner Pod を消す | ジョブが終わると runner の登録が消え、作り直す |
+
+ARC そのものを使わなかったのは、Kubernetes が前提だからです。GKE は前述の理由で外していますし、ARC の listener は常時起動しておく必要があります。月 3 回しか動かないので、「0 台か 1 台か」を切り替えるだけで十分でした。複数の対象を並行して回したくなったら、ARC に寄せるのが次の選択肢になります。
+
 ### LLM は API キーで直接呼ぶ
 
 社内の Google Cloud に寄せるなら、Vertex AI 経由で Claude を呼ぶのが自然です。ただ、Shannon は Vertex AI の認証方式に対応していなかったため、Anthropic の API キーで直接呼ぶことにしました。キーは Secret Manager に置き、VM だけが読めるようにしています。
@@ -349,3 +361,4 @@ dispatcher は、VPC の内側からしか呼べない設定（ingress: internal
 - GCE の ID トークン: https://cloud.google.com/compute/docs/instances/verifying-instance-identity
 - GitHub Actions の JIT runner: https://docs.github.com/en/rest/actions/self-hosted-runners#create-configuration-for-a-just-in-time-runner-for-an-organization
 - GitHub Actions の制限: https://docs.github.com/en/actions/reference/limits
+- Actions Runner Controller: https://docs.github.com/en/actions/concepts/runners/actions-runner-controller
