@@ -86,10 +86,6 @@ JIT config を選んだのは、VM に「runner を登録できる鍵」を渡�
 
 ARC そのものを使わなかったのは、Kubernetes が前提だからです。GKE は前述の理由で外していますし、ARC の listener は常時起動しておく必要があります。月 3 回しか動かないので、「0 台か 1 台か」を切り替えるだけで十分でした。複数の対象を並行して回したくなったら、ARC に寄せるのが次の選択肢になります。
 
-### LLM は API キーで直接呼ぶ
-
-社内の Google Cloud に寄せるなら、Vertex AI 経由で Claude を呼ぶのが自然です。ただ、Shannon は Vertex AI の認証方式に対応していなかったため、Anthropic の API キーで直接呼ぶことにしました。キーは Secret Manager に置き、VM だけが読めるようにしています。
-
 ## アーキテクチャ
 
 Cloud Run 上に Go で書いた司令塔（dispatcher）を置き、VM の起動・停止、ワークフローの起動、トークンの発行を受け持たせています。VM は外部 IP を持たず、Cloud NAT の固定 IP から攻撃します。
