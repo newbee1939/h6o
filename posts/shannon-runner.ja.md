@@ -242,6 +242,16 @@ dispatcher 側の権限も最小限にしています。
 - Secret Manager は、プロジェクト全体ではなく GitHub App の秘密鍵 2 つだけを読める
 - VM には専用のサービスアカウントを付け、権限の広いデフォルトのサービスアカウントは使わせない
 
+### dispatcher を呼べる相手を ID トークンで絞る
+
+dispatcher は JIT config や対象用トークンを出す鍵の発行所なので、Scheduler と VM 以外には呼ばせたくありません。
+
+そこで、呼び出しの権限（`roles/run.invoker`）は `allUsers` ではなく、特定のサービスアカウントにだけ与えます。この場合、呼ぶ側は [ID トークンを付けて自分が誰かを示す必要があります](https://cloud.google.com/run/docs/authenticating/service-to-service)。権限は「通してよい相手のリスト」、ID トークンは「社員証」で、片方だけでは通りません。
+
+ID トークンは、メタデータサーバーに頼むだけで受け取れます。API キーのような共有の秘密を VM に置かずに済み、有効期限も約 1 時間です。
+
+ingress: internal とは確かめるものが違います。ingress は「どこから来たか」、ID トークンは「誰が呼んだか」を見るので、両方を重ねています。
+
 ### VM は「時刻」ではなく「見回り」で止める
 
 VM の止め方は、2 つの失敗のコストを比べて決めました。
@@ -331,6 +341,7 @@ dispatcher は、VPC の内側からしか呼べない設定（ingress: internal
 - Cloud Run のコンテナランタイム契約: https://cloud.google.com/run/docs/container-contract
 - Cloud Run と Shared VPC: https://cloud.google.com/run/docs/securing/private-networking#shared-vpc
 - GCE の ID トークン: https://cloud.google.com/compute/docs/instances/verifying-instance-identity
+- Cloud Run のサービス間認証: https://cloud.google.com/run/docs/authenticating/service-to-service
 - GitHub Actions の JIT runner: https://docs.github.com/en/rest/actions/self-hosted-runners#create-configuration-for-a-just-in-time-runner-for-an-organization
 - GitHub Actions の制限: https://docs.github.com/en/actions/reference/limits
 - Actions Runner Controller: https://docs.github.com/en/actions/concepts/runners/actions-runner-controller
