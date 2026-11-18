@@ -52,7 +52,7 @@ AI によって攻撃する側が速く・安くなっているなら、守る�
 GitHub Actions を選んだ理由は 2 つです。
 
 - 公式の Action がある：Shannon には公式の GitHub Action（[shannon-action](https://github.com/KeygraphHQ/shannon-action)）がある
-- キューを GitHub に任せられる：GitHub は、空いている runner にジョブを 1 件ずつ割り当て、runner が見つからないジョブも[最大 24 時間待ってくれる](https://docs.github.com/en/actions/reference/limits)。Pub/Sub とワーカーを自作せずに済む
+- キューを GitHub に任せられる：GitHub は、空いている runner にジョブを 1 件ずつ割り当て、runner が見つからないジョブも[最大 24 時間待ってくれる](https://docs.github.com/en/actions/reference/limits)。Pub/Sub を使っても、メッセージを受け取ってスキャンを走らせるワーカーは自分で書くことになるが、その役を runner が担ってくれる
 
 「GitHub Actions を使う」というと、GitHub のマシンで動くイメージがあるかもしれません。ですが、`runs-on` で自前の VM（self-hosted runner）を指定すれば、実行場所は自分で選べます。
 
