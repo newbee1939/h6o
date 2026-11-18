@@ -70,7 +70,7 @@ registration token 方式: 管理役が registration token（登録専用のト�
 JIT config 方式        : 管理役が登録まで済ませる                             → runner は起動するだけ
 ```
 
-今回は dispatcher が管理役です。GitHub App の秘密鍵で JWT を作り、installation access token に交換し、それで `generate-jitconfig` を叩くと、その時点で登録が済んだ認証情報が返ります。VM はそれを `run.sh --jitconfig` に渡すだけで、1 ジョブ終わると自動で登録解除されます。
+今回は dispatcher が管理役です。GitHub App の秘密鍵で JWT を作り、installation access token に交換し、それで `generate-jitconfig` を叩くと、その時点で登録が済んだ認証情報が返ります。この runner は 1 ジョブだけ受け取れる使い捨ての runner として登録されていて、VM はそれを `run.sh --jitconfig` に渡すだけです。ジョブが終わると登録は消えます。
 
 JIT config を選んだのは、VM に「runner を登録できる鍵」を渡さずに済み、前のジョブの状態も残らないからです。
 
@@ -202,7 +202,7 @@ sequenceDiagram
     D->>G: installation access token で JIT config を要求
     G-->>D: JIT config（1 回限り）
     D-->>V: JIT config
-    V->>G: run.sh --jitconfig で runner を起動（1 ジョブで登録解除）
+    V->>G: run.sh --jitconfig で runner を起動（1 ジョブだけ受け取れる）
   end
 
   rect rgba(128, 128, 128, 0.08)
