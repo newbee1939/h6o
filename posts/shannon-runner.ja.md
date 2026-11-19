@@ -40,8 +40,8 @@ AI によって攻撃する側が速く・安くなっているなら、守る�
 | 候補 | 外した理由 |
 | -- | -- |
 | Cloud Run | 特権コンテナに非対応 |
-| GKE Autopilot | 特権 Pod を使うには組織ポリシーの変更が必要 + 会社としてGKEの運用をCloud Runに載せ替えた背景 |
-| GKE Standard | ノードは結局 VM なので、運用の手間が減らない + 会社としてGKEの運用をCloud Runに載せ替えた背景 |
+| GKE Autopilot | 特権 Pod を使うには組織ポリシーの変更が必要。社内では GKE から Cloud Run に移行済み |
+| GKE Standard | ノードは結局 VM なので、運用の手間が減らない。社内では GKE から Cloud Run に移行済み |
 | GitHub-hosted runner | 送信元 IP を固定できない（対象の WAF は IP の許可リスト方式） |
 | ベンダーの SaaS 版 | ソースコードと攻撃結果が社外を通る |
 
@@ -51,8 +51,8 @@ AI によって攻撃する側が速く・安くなっているなら、守る�
 
 GitHub Actions を選んだ理由は 2 つです。
 
-- 公式の Action がある：Shannon には公式の GitHub Action（[shannon-action](https://github.com/KeygraphHQ/shannon-action)）がある
-- キューを GitHub に任せられる：GitHub は、空いている runner にジョブを 1 件ずつ割り当て、runner が見つからないジョブも[最大 24 時間待ってくれる](https://docs.github.com/en/actions/reference/limits)。Pub/Sub を使っても、メッセージを受け取ってスキャンを走らせるワーカーは自分で書くことになるが、その役を runner が担ってくれる
+- 公式の Action がある：Shannon の公式 GitHub Action（[shannon-action](https://github.com/KeygraphHQ/shannon-action)）をそのまま使える
+- キューを GitHub に任せられる：GitHub は、空いている runner にジョブを 1 件ずつ割り当て、runner が見つからないジョブも[最大 24 時間待ってくれる](https://docs.github.com/en/actions/reference/limits)。Pub/Sub を使う場合、メッセージを受け取ってスキャンを走らせるワーカーは自分で書く必要があるが、その役を runner が担ってくれる。将来、対象を増やして並行に回すことになっても、キューはそのまま使える
 
 「GitHub Actions を使う」というと、GitHub のマシンで動くイメージがあるかもしれません。ですが、`runs-on` で自前の VM（self-hosted runner）を指定すれば、実行場所は自分で選べます。
 
@@ -70,7 +70,7 @@ registration token 方式: 管理役が registration token（登録専用のト�
 JIT config 方式        : 管理役が登録まで済ませる                             → runner は起動するだけ
 ```
 
-今回は dispatcher が管理役です。GitHub App の秘密鍵で JWT を作り、installation access token に交換し、それで `generate-jitconfig` を叩くと、その時点で登録が済んだ認証情報が返ります。この runner は 1 ジョブだけ受け取れる使い捨ての runner として登録されていて、VM はそれを `run.sh --jitconfig` に渡すだけです。ジョブが終わると登録は消えます。
+今回は dispatcher が管理役です。GitHub App の秘密鍵で JWT を作り、installation access token に交換し、それで `generate-jitconfig` を叩くと、登録が済んだ状態の JIT config が返ります。VM はこれを `run.sh --jitconfig` に渡すだけです。この runner は 1 ジョブだけ受け取れる使い捨てとして登録されていて、ジョブが終わると登録は消えます。
 
 JIT config を選んだのは、VM に「runner を登録できる鍵」を渡さずに済み、前のジョブの状態も残らないからです。
 
@@ -81,7 +81,7 @@ JIT config を選んだのは、VM に「runner を登録できる鍵」を渡�
 | ARC | 今回 |
 | -- | -- |
 | listener がジョブを待ち受け、runner の数を決める | dispatcher が VM を起動し、毎時の見回りで止める |
-| controller が JIT 設定を取得して runner Pod を作る | dispatcher が JIT 設定を発行し、VM がそれで runner を立てる |
+| controller が JIT config を取得して runner Pod を作る | dispatcher が JIT config を発行し、VM がそれで runner を立てる |
 | ジョブが終わると runner Pod を消す | ジョブが終わると runner の登録が消え、作り直す |
 
 ARC そのものを使わなかったのは、Kubernetes が前提だからです。GKE は前述の理由で外していますし、ARC の listener は常時起動しておく必要があります。月 3 回しか動かないので、「0 台か 1 台か」を切り替えるだけで十分でした。複数の対象を並行して回したくなったら、ARC に寄せるのが次の選択肢になります。
@@ -111,7 +111,7 @@ sequenceDiagram
     D->>D: App の秘密鍵で JWT を作る
     D->>G: JWT を installation access token に交換
     D->>G: ワークフローの実行を作る（workflow_dispatch）。ジョブは runner 待ちに入る
-    Note over D,G: VM の起動完了は待たない。<br>ジョブは runner が来るまで GitHub 側で待つ
+    Note over D,G: VM の起動完了は待たない
   end
 
   rect rgba(128, 128, 128, 0.15)
@@ -154,13 +154,13 @@ sequenceDiagram
   end
 ```
 
-**A. 起動の依頼（1〜5）**：dispatcher は VM を起動したら、起動の完了は待たずにすぐ `workflow_dispatch` でワークフローの実行（workflow run）を作ります。この時点ではジョブは始まらず、GitHub 側で runner が来るまで待ってくれるからです。トリガーを dispatcher の 1 か所に集めたので、「VM の起動」と「ワークフローの起動」の時刻がずれる事故は起きません。
+**A. 起動の依頼（1〜5）**：dispatcher は VM を起動したら、起動の完了を待たずにすぐ `workflow_dispatch` でワークフローの実行（workflow run）を作ります。待たなくてよいのは、この時点ではジョブは始まらず、GitHub 側で runner が来るまで待ってくれるからです。トリガーを dispatcher の 1 か所に集めたので、「VM の起動」と「ワークフローの起動」の時刻がずれる事故は起きません。
 
-**B. VM の準備（6〜8）**：VM はサービスアカウントキー（秘密鍵の入った JSON ファイル）を持たなくても、メタデータサーバー（`metadata.google.internal`）に HTTP で頼むだけで、Google が署名した ID トークンを受け取れます。メタデータサーバーへのリクエストは [VM が載っている物理ホストの外に出ない](https://cloud.google.com/compute/docs/metadata/overview)ので、身元は鍵ではなく基盤が保証してくれます。startup-script はそれを付けて dispatcher から setup.sh を受け取り、実行するだけです。setup.sh は dispatcher のイメージに埋め込んであるので、main にマージすれば次の起動から反映されます。
+**B. VM の準備（6〜8）**：VM はサービスアカウントキー（秘密鍵の入った JSON ファイル）を持たなくても、メタデータサーバー（`metadata.google.internal`）に HTTP で頼むだけで、Google が署名した ID トークンを受け取れます。メタデータサーバーへのリクエストは [VM が載っている物理ホストの外に出ない](https://cloud.google.com/compute/docs/metadata/overview)ので、身元は鍵ではなく基盤が保証してくれます。startup-script はこの ID トークンを付けて dispatcher から setup.sh を受け取り、実行するだけです。setup.sh は dispatcher のイメージに埋め込んであるので、main にマージすれば次の起動から反映されます。
 
 **C. runner の登録（9〜12）**：ここからは startup-script ではなく、setup.sh が systemd に登録した `next-job.sh` が動きます。dispatcher に JIT config を頼み、runner を起動します。
 
-**D. スキャン（13〜19）**：ここで動くのは、runner が受け取ったジョブの step です。対象用トークン（種類は installation access token）は、VM が対象リポジトリを clone するためのトークンです。runner 用とは別の GitHub App で発行し、対象リポジトリ 1 件だけに絞っています（有効 1 時間）。dispatcher は、リポジトリ名がレビュー済みの対象一覧（`targets.yaml`）にあるときだけこれを発行し、攻撃先の URL も一緒に返します。ジョブが終わると runner の登録は消え、systemd が C からやり直すので、待っているジョブはまっさらな runner で順番に処理されます。
+**D. スキャン（13〜19）**：ここで動くのは、runner が受け取ったジョブの step です。対象用トークン（種類は installation access token）は、VM が対象リポジトリを clone するためのトークンです。runner 用とは別の GitHub App で発行し、対象リポジトリ 1 件だけに絞っています（有効 1 時間）。dispatcher は、リポジトリ名がレビュー済みの対象一覧（`targets.yaml`）にあるときだけこれを発行し、攻撃先の URL も一緒に返します。ジョブが終わると runner の登録は消え、systemd が C からやり直すので、待っているジョブは新しく登録した runner で順番に処理されます。なお、使い捨てなのは runner の登録だけで、VM 自体は停止するまで使い回しています。
 
 **E. 停止（20〜22）**：dispatcher が毎時、runner と待ちのジョブを確認し、仕事がなければ VM を止めます。
 
@@ -221,10 +221,10 @@ GitHub App も、用途ごとに 2 つに分けました。App の権限は App 
 
 また、攻撃先の URL はワークフローの入力では受け取らず、レビュー済みの設定ファイルの値を dispatcher が返すようにしています。ワークフローを起動できる人でも、好きな URL を攻撃することはできません。
 
-dispatcher 側の権限も最小限にしています。
+Google Cloud 側の権限も最小限にしています。
 
-- VM を操作できるのは、この VM 1 台だけ
-- Secret Manager は、プロジェクト全体ではなく GitHub App の秘密鍵 2 つだけを読める
+- dispatcher が操作できる VM は、この 1 台だけ
+- dispatcher が Secret Manager で読めるのは、プロジェクト全体ではなく GitHub App の秘密鍵 2 つだけ
 - VM には専用のサービスアカウントを付け、権限の広いデフォルトのサービスアカウントは使わせない
 
 ### dispatcher を呼べる相手を ID トークンで絞る
@@ -233,7 +233,7 @@ dispatcher は JIT config や対象用トークンを出す鍵の発行所なの
 
 そこで、呼び出しの権限（`roles/run.invoker`）は `allUsers` ではなく、特定のサービスアカウントにだけ与えます。この場合、呼ぶ側は [ID トークンを付けて自分が誰かを示す必要があります](https://cloud.google.com/run/docs/authenticating/service-to-service)。
 
-ID トークンは、メタデータサーバーに頼むだけで受け取れます。API キーのような共有の秘密を VM に置かずに済み、有効期限も約 1 時間です。
+ID トークンは、前述のとおりメタデータサーバーに頼むだけで受け取れます。API キーのような共有の秘密を VM に置かずに済み、有効期限も約 1 時間です。
 
 ingress: internal とは確かめるものが違います。ingress は「どこから来たか」、ID トークンは「誰が呼んだか」を見るので、両方を重ねています。
 
