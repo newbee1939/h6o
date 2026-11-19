@@ -278,9 +278,11 @@ LLM の費用を抑えるため、対象のサービスを順番に並べ、月 
 
 dispatcher は、VPC の内側からしか呼べない設定（ingress: internal）にしていました。ところが、Shared VPC 上の VM から呼ぶと 404 が返ってきて、アプリにはログすら残りませんでした。
 
-原因は公式ドキュメントに書かれていました。Shared VPC からのリクエストが「内側」と見なされるのは、[Cloud Run 側が Direct VPC egress でその VPC につながっているときだけ](https://cloud.google.com/run/docs/securing/private-networking#shared-vpc)です。
+原因は公式ドキュメントに書かれていました。Shared VPC からのリクエストが「内側」と見なされるのは、[Cloud Run がその Shared VPC に attach されているとき](https://cloud.google.com/run/docs/securing/private-networking#shared-vpc)、つまり Direct VPC egress などで「その VPC に通信を送る」設定がされているときだけです。
 
-Direct VPC egress は本来、dispatcher から VPC へ「出ていく」通信の設定です。それなのに、VM から dispatcher へ「入ってくる」通信を受け付けるかどうかが、この設定で決まっていました。dispatcher から VPC の中へ出ていく通信はないので、この設定は要らないと考えていたのが落とし穴でした。dispatcher に Direct VPC egress 用のサブネットを割り当てて解決しました。
+Direct VPC egress は、名前のとおり dispatcher から VPC へ「出ていく」通信の設定です。ただ、この設定は同時に「dispatcher はこの VPC に属している」という目印にもなっていて、入ってくる通信を内側と判定するときにも使われます。VM からのリクエストは、この設定で作られる出口を通るわけではなく、これまでどおり dispatcher の URL 宛てに届きます。変わるのは、届いたリクエストを内側と判定するかどうかだけです。dispatcher から VPC の中へ出ていく通信はないので、この設定は要らないと考えていたのが落とし穴でした。
+
+dispatcher に Direct VPC egress 用のサブネットを割り当てて解決しました。
 
 ### 404 が直ったら、次は 403
 
