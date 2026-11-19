@@ -284,12 +284,6 @@ Direct VPC egress は、名前のとおり dispatcher から VPC へ「出てい
 
 dispatcher に Direct VPC egress 用のサブネットを割り当てて解決しました。
 
-### 404 が直ったら、次は 403
-
-拒否した理由をログに出してみると、VM が発行する ID トークンに `email` が入っていませんでした。dispatcher は呼び出し元をメールアドレスで確認していたので、すべて弾いていたのです。
-
-[公式ドキュメント](https://cloud.google.com/compute/docs/instances/verifying-instance-identity)によると、既定の形式（`format=standard`）のトークンには `email` が含まれません。サービスアカウントの一意な ID である `sub` で確認するように変えて解決しました。
-
 ## まとめ
 
 - Shannon が特権コンテナを必要とするため、Cloud Run ではなく GCE VM 1 台を起動・停止する構成にした。どこで動かすかを決める前に、ツールが何を必要とするかをソースで確かめるのが大事だった
