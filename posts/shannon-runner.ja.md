@@ -256,8 +256,6 @@ VM はたまにしか起動しないので、久しぶりに起動してもそ�
 
 そこで、起動のたびに OS のパッチを当て、runner も最新版を入れ直しています。GitHub は古い runner には[ジョブを渡さなくなる](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/autoscaling-with-self-hosted-runners#controlling-runner-software-updates-on-self-hosted-runners)ので、バージョンを固定すると半年後には動きません。
 
-逆に、攻撃ツールである `shannon-action` はコミット SHA で固定しています。攻撃の中身が知らないうちに変わるのは避けたいからです。
-
 ### 自動で再試行しない
 
 Cloud Scheduler には、あえて再試行を付けていません。途中まで成功した状態で再試行すると、同じ対象を二重にスキャンしてしまい、数十ドルが無駄になるからです。
@@ -289,28 +287,6 @@ dispatcher は、VPC の内側からしか呼べない設定（ingress: internal
 拒否した理由をログに出してみると、VM が発行する ID トークンに `email` が入っていませんでした。dispatcher は呼び出し元をメールアドレスで確認していたので、すべて弾いていたのです。
 
 [公式ドキュメント](https://cloud.google.com/compute/docs/instances/verifying-instance-identity)によると、既定の形式（`format=standard`）のトークンには `email` が含まれません。サービスアカウントの一意な ID である `sub` で確認するように変えて解決しました。
-
-### Shannon 自体が失敗した
-
-インフラが通ると、今度は Shannon が途中で失敗しました。
-
-費用を抑えるために最小構成のテストモードで確認していたのですが、ソースを読むと、テストモードにはレポートを完成させる指示が入っていませんでした。仕様どおりの失敗だったということです。
-
-本番と同じ形で実行すると、最後まで完走しました。所要時間は約 2.6 時間、LLM の費用は約 $30 でした。
-
-### 攻撃先に届かなかった
-
-スキャン対象を増やす段階で、攻撃先に届かない問題が 2 つ出ました。
-
-1 つ目は許可リストの上限です。対象のサービスは、共通の Cloud Armor ポリシーを使っています。そのため、許可リストに 1 行足すだけで全サービスに届く予定でした。ところが、Cloud Armor の 1 ルールに書ける IP 範囲は [10 件まで](https://cloud.google.com/armor/quotas)で、plan が失敗しました。STG 用のルールを分けて解決しました。
-
-2 つ目は STG の起動待ちです。STG の Cloud Run は最小インスタンス数が 0 なので、最初のアクセスは起動を待つぶん遅くなります。スキャンの前に攻撃先へ 1 回アクセスして、起こしておくステップを足しました。
-
-### 結果をリポジトリに送れなかった
-
-スキャン結果（SARIF）を対象リポジトリの Security タブに出す予定でしたが、private リポジトリでは有償の Code Security が必要でした。
-
-いまはレポートと Slack 通知だけにしています。送信に失敗してもスキャン全体は失敗扱いにしない作りにしておいたので、レポート自体は無事でした。
 
 ## まとめ
 
