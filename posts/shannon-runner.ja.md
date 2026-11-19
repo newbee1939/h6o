@@ -215,7 +215,7 @@ sequenceDiagram
   Note over V,SM: 秘密鍵・JWT・runner 用の installation access token は VM に渡らない
 ```
 
-VM が手にできる GitHub の鍵は、JIT config と対象用トークンだけです。対象用トークンは[発行時に `repositories` と `permissions` を指定](https://docs.github.com/en/rest/apps/apps#create-an-installation-access-token-for-an-app)して「このリポジトリだけ、読み取りと結果の送信だけ」に絞っています。JIT config は 1 ジョブ、対象用トークンは 1 時間で使えなくなります。VM の中に、長く使える GitHub の鍵は残りません。
+VM が手にできる GitHub の鍵は、JIT config と対象用トークンだけです。対象用トークンは[発行時に `repositories` と `permissions` を指定](https://docs.github.com/en/rest/apps/apps#create-an-installation-access-token-for-an-app)して「このリポジトリだけ、読み取りだけ」に絞っています。JIT config は 1 ジョブ、対象用トークンは 1 時間で使えなくなります。VM の中に、長く使える GitHub の鍵は残りません。
 
 GitHub App も、用途ごとに 2 つに分けました。App の権限は App ごとに 1 つで、インストール先の Org ごとに変えられません。1 つの App で済ませると、対象側の Org にも、使わない「runner を登録する権限」が付いてしまいます。発行するトークンは絞れても、秘密鍵が漏れたり絞り方を間違えたりすれば、偽の runner で対象 Org のジョブを横取りされかねません。使わない権限は持たせず、攻撃される面を増やさないようにしています。
 
