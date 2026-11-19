@@ -280,7 +280,7 @@ dispatcher は、VPC の内側からしか呼べない設定（ingress: internal
 
 原因は公式ドキュメントに書かれていました。Shared VPC からのリクエストが「内側」と見なされるのは、[Cloud Run 側が Direct VPC egress でその VPC につながっているときだけ](https://cloud.google.com/run/docs/securing/private-networking#shared-vpc)です。
 
-つまり、受信できるかどうかが、送信側の設定で決まるということです。直感に反する仕様でした。dispatcher に Direct VPC egress 用のサブネットを割り当てて解決しました。
+Direct VPC egress は本来、dispatcher から VPC へ「出ていく」通信の設定です。それなのに、VM から dispatcher へ「入ってくる」通信を受け付けるかどうかが、この設定で決まっていました。dispatcher から VPC の中へ出ていく通信はないので、この設定は要らないと考えていたのが落とし穴でした。dispatcher に Direct VPC egress 用のサブネットを割り当てて解決しました。
 
 ### 404 が直ったら、次は 403
 
