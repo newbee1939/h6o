@@ -231,7 +231,7 @@ dispatcher 側の権限も最小限にしています。
 
 dispatcher は JIT config や対象用トークンを出す鍵の発行所なので、Scheduler と VM 以外には呼ばせたくありません。
 
-そこで、呼び出しの権限（`roles/run.invoker`）は `allUsers` ではなく、特定のサービスアカウントにだけ与えます。この場合、呼ぶ側は [ID トークンを付けて自分が誰かを示す必要があります](https://cloud.google.com/run/docs/authenticating/service-to-service)。権限は「通してよい相手のリスト」、ID トークンは「社員証」で、片方だけでは通りません。
+そこで、呼び出しの権限（`roles/run.invoker`）は `allUsers` ではなく、特定のサービスアカウントにだけ与えます。この場合、呼ぶ側は [ID トークンを付けて自分が誰かを示す必要があります](https://cloud.google.com/run/docs/authenticating/service-to-service)。
 
 ID トークンは、メタデータサーバーに頼むだけで受け取れます。API キーのような共有の秘密を VM に置かずに済み、有効期限も約 1 時間です。
 
