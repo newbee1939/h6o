@@ -72,7 +72,7 @@ JIT config 方式        : 管理役が登録まで済ませる                 
 
 今回は dispatcher が管理役です。GitHub App の秘密鍵で JWT を作り、installation access token に交換し、それで `generate-jitconfig` を叩くと、登録が済んだ状態の JIT config が返ります。VM はこれを `run.sh --jitconfig` に渡すだけです。この runner は 1 ジョブだけ受け取れる使い捨てとして登録されていて、ジョブが終わると登録は消えます。
 
-JIT config を選んだのは、VM に「runner を登録できる鍵」を渡さずに済み、前のジョブの状態も残らないからです。
+JIT config を選んだのは、VM に「runner を登録できる鍵」を渡さずに済むからです。
 
 ### ARC の考え方を小さく借りる
 
@@ -254,13 +254,13 @@ VM の止め方は、2 つの失敗のコストを比べて決めました。
 
 VM はたまにしか起動しないので、久しぶりに起動してもそのまま動く必要があります。
 
-そこで、起動のたびに OS のパッチを当て、runner も最新版を入れ直しています。GitHub は古い runner には[ジョブを渡さなくなる](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/autoscaling-with-self-hosted-runners#controlling-runner-software-updates-on-self-hosted-runners)ので、バージョンを固定すると半年後には動きません。
+そこで、起動のたびに OS のパッチを当て、runner も最新版を入れ直しています。GitHub は古い runner には[ジョブを渡さなくなる](https://docs.github.com/en/actions/reference/runners/self-hosted-runners#runner-software-updates-on-self-hosted-runners)ので、バージョンを固定すると半年後には動きません。
 
 ### 自動で再試行しない
 
 Cloud Scheduler には、あえて再試行を付けていません。途中まで成功した状態で再試行すると、同じ対象を二重にスキャンしてしまい、数十ドルが無駄になるからです。
 
-たまにしか動かない仕組みなので、失敗したらアラートで気づき、人がやり直すほうが安く済みます。そのため、dispatcher のログは Cloud Logging が読める JSON 形式で出力し、エラーが出たら Slack に通知されるアラートを設定しています。
+たまにしか動かない仕組みなので、失敗したらアラートで気づき、人がやり直すほうが安く済みます。そのため、dispatcher のログは構造化ログ（JSON）で出力し、エラーが出たら Slack に通知されるアラートを設定しています。
 
 ### 状態を持たないローテーション
 
@@ -290,7 +290,6 @@ dispatcher に Direct VPC egress 用のサブネットを割り当てて解決�
 - GitHub Actions を「キュー付きのジョブ実行基盤」として使い、キューの仕組みを自作せずに済ませた
 - いちばん危ない VM には、使い捨ての弱いトークンだけを渡す。強い権限は dispatcher に閉じ込めた
 - VM の止め方や再試行の有無は、失敗したときのコストを比べて決めた
-- インフラはすべて Terraform で管理し、PR は「起動 → 準備 → 登録 → スキャン → 停止」の段階ごとに分けてレビューしやすくした
 
 ## 参考
 
