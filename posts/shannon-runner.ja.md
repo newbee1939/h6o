@@ -115,15 +115,16 @@ sequenceDiagram
   end
 
   rect rgba(128, 128, 128, 0.15)
-    Note over D,V: B. VM の準備（起動のたびに startup-script が走る）
+    Note over D,V: B. VM の準備【startup-script】起動のたびに走る
     V->>V: メタデータサーバーから VM の ID トークンを取得
     V->>D: GET /setup（VM の ID トークン）
     D-->>V: setup.sh（パッチ適用、Docker・runner の導入）
+    Note over V: setup.sh が next-job.sh を<br>systemd のサービスとして登録する
   end
 
-  loop VM が止まるまで（systemd が C → D を繰り返す）
+  loop VM が止まるまで（systemd が next-job.sh を繰り返し起動）
     rect rgba(128, 128, 128, 0.08)
-      Note over D,G: C. runner の登録
+      Note over D,G: C. runner の登録【next-job.sh】
       V->>D: POST /runner-token（VM の ID トークン）
       D->>G: JIT config を発行
       D-->>V: JIT config（1 ジョブ限り）
@@ -131,7 +132,7 @@ sequenceDiagram
     end
 
     rect rgba(128, 128, 128, 0.15)
-      Note over D,T: D. スキャン
+      Note over D,T: D. スキャン【runner が受け取ったジョブの step】
       V->>D: GET /target-token?repo=...（VM の ID トークン）
       D->>G: 別の App で対象 1 件に絞ったトークンを発行
       D-->>V: 対象用トークン ＋ 攻撃先の URL
@@ -157,9 +158,9 @@ sequenceDiagram
 
 **B. VM の準備（6〜8）**：VM はサービスアカウントキー（秘密鍵の入った JSON ファイル）を持たなくても、メタデータサーバー（`metadata.google.internal`）に HTTP で頼むだけで、Google が署名した ID トークンを受け取れます。メタデータサーバーへのリクエストは [VM が載っている物理ホストの外に出ない](https://cloud.google.com/compute/docs/metadata/overview)ので、身元は鍵ではなく基盤が保証してくれます。startup-script はそれを付けて dispatcher から setup.sh を受け取り、実行するだけです。setup.sh は dispatcher のイメージに埋め込んであるので、main にマージすれば次の起動から反映されます。
 
-**C. runner の登録（9〜12）**：systemd のサービスが dispatcher に JIT config を頼み、runner を起動します。
+**C. runner の登録（9〜12）**：ここからは startup-script ではなく、setup.sh が systemd に登録した `next-job.sh` が動きます。dispatcher に JIT config を頼み、runner を起動します。
 
-**D. スキャン（13〜19）**：対象用トークン（種類は installation access token）は、VM が対象リポジトリを clone するためのトークンです。runner 用とは別の GitHub App で発行し、対象リポジトリ 1 件だけに絞っています（有効 1 時間）。dispatcher は、リポジトリ名がレビュー済みの対象一覧（`targets.yaml`）にあるときだけこれを発行し、攻撃先の URL も一緒に返します。ジョブが終わると runner の登録は消え、systemd が C からやり直すので、待っているジョブはまっさらな runner で順番に処理されます。
+**D. スキャン（13〜19）**：ここで動くのは、runner が受け取ったジョブの step です。対象用トークン（種類は installation access token）は、VM が対象リポジトリを clone するためのトークンです。runner 用とは別の GitHub App で発行し、対象リポジトリ 1 件だけに絞っています（有効 1 時間）。dispatcher は、リポジトリ名がレビュー済みの対象一覧（`targets.yaml`）にあるときだけこれを発行し、攻撃先の URL も一緒に返します。ジョブが終わると runner の登録は消え、systemd が C からやり直すので、待っているジョブはまっさらな runner で順番に処理されます。
 
 **E. 停止（20〜22）**：dispatcher が毎時、runner と待ちのジョブを確認し、仕事がなければ VM を止めます。
 
